@@ -1,6 +1,6 @@
 # HANDOFF：CareArm AI 開發交接
 
-最後更新：2026-10-28
+最後更新：2026-11-02
 
 ## 0. 目前主線與本次交接規則（2026-10-21）
 
@@ -20,7 +20,7 @@
 | Phase 5 風險決策 | ✅ 完成，但**通過硬性規則後的錯誤樣本極少**（見 §4） | 47 個 pytest 全過 |
 | Phase 6 實驗 | ✅ 300 情境 + 1200 情境擴充 | 見 §4 |
 | Phase 7 儀表板 | ✅ 完成 | Playwright 在桌面 1440 px 與手機 390 px 截圖檢查過 |
-| Phase 8 測試／文件 | ✅ | macOS `mjpython -m pytest -q tests` → 88 passed |
+| Phase 8 測試／文件 | ✅ | macOS `.venv/bin/mjpython -m pytest -q tests` → 140 passed（2026-11-01） |
 | 開口藥杯＋藥丸 | ✅ | 藥丸隨杯搬運、取走、掉落物理測試通過 |
 | 手腕相機服藥驗證 | ✅ 模擬完成 | wrist RGB 的部分／完成／掉落端到端測試通過 |
 | 異常通報／總部收件匣 | ✅ | 關鍵字、重複阻擋、依從性異常與 ack API 通過 |
@@ -201,6 +201,14 @@ python -m carearm.experiments.runner --run-id main         # 重跑實驗
 6. 實驗中模擬照護者確認後的執行，讓「確認」也有結果統計。
 
 ## 8. 變更紀錄
+
+### 2026-11-01：讓系統可實際使用（Claude、Codex）
+
+- 建立 git 並修正：一份決策只能執行一次、急停全程有效、失敗後解除 busy、當機重啟仍擋重複取藥、過午夜換日、懷疑掉落不記成已服用、API 與音檔驗證、前端與啟動腳本。細節見 `CHANGELOG.md`。
+- 驗證：`.venv/bin/mjpython -m pytest -q tests` → 140 passed；API 跑完取藥；WebKit 文字指令流程。
+- 未驗證：瀏覽器內完整取藥、真實麥克風、真實硬體、並發壓力測試。
+- 已知限制：被遮住的重複藥盒無法由影像發現；`status` 跨執行緒讀模擬資料；通報無持久重試；D 策略門檻僅為經驗值。
+- 測試時請把 `CAREARM_DB` 指到暫存路徑；`results/carearm.sqlite` 是執行資料，未追蹤。
 
 ### 2026-10-28：完成國科會 C802 規格研究計畫書
 

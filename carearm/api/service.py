@@ -279,8 +279,12 @@ class SimulationService:
                 # 回收前先用手腕 RGB-D 看盒內是否還有藥（服藥依從性驗證）
                 adherence = self._verify_adherence(decision.target_period, decision.target_xy, text)
                 apply_adherence(decision, adherence, self.cfg)
+            elif detections:
+                # 遞送區有盒子卻認不出是哪一盒：不能靠口述或推測記成已服用
+                decision.reasons.append("遞送區的藥盒無法確認身分：未記錄服藥，請照護者確認")
+                self.log("schedule", "遞送區藥盒身分不明，未記錄服藥", "WARN")
             else:
-                taken = decision.target_period or sched.target or sched.candidate
+                taken = decision.target_period
                 if taken:
                     self._mark(taken, "marked_taken", detail={"source": "self_report", "text": text})
                     self.log("schedule", f"遞送區沒有可檢查的藥盒：依住民口述記錄{PERIOD_ZH[taken]}的藥已服用（未經相機驗證）", "WARN")
@@ -514,6 +518,8 @@ class SimulationService:
         reasons = [r for i in inspections for r in i.reasons]
         if comp is not None and comp.status == POSSIBLE_DROP:
             reasons.append(comp.message)
+            if verdict == ADH_TAKEN:     # 盒子空了不等於吃下去：懷疑掉落時交給照護者，不記成已服用
+                verdict = ADH_UNVERIFIED
         prior = self.store.dose_state().get(period, {}).get("claims_with_pills", 0)
         claims = prior + (1 if verdict == REMAINING else 0)
         alert = verdict == REMAINING and claims >= int(acfg.get("repeat_claim_alert", 2))

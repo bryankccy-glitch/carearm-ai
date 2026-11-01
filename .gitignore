@@ -9,3 +9,4 @@ MUJOCO_LOG.TXT
 *.tsbuildinfo
 .env
 .env.*
+results/carearm.sqlite

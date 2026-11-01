@@ -280,8 +280,8 @@ const post = <T,>(path: string, body?: unknown) =>
   });
 
 export const api = {
-  status: () => req<Status>("/api/status"),
-  events: () => req<EventRow[]>("/api/events?limit=300"),
+  status: (signal?: AbortSignal) => req<Status>("/api/status", { signal }),
+  events: (signal?: AbortSignal) => req<EventRow[]>("/api/events?limit=300", { signal }),
   experiments: () => req<{ runs: Run[] }>("/api/experiments"),
   models: () => req<ModelsInfo>("/api/models"),
   reset: () => post("/api/reset"),
@@ -296,9 +296,9 @@ export const api = {
   resume: () => post("/api/resume"),
   taken: (period: string, taken: boolean) => post("/api/taken", { period, taken }),
   resetDay: () => post("/api/day/reset"),
-  alerts: () => req<AlertsInfo>("/api/alerts"),
+  alerts: (signal?: AbortSignal) => req<AlertsInfo>("/api/alerts", { signal }),
   ackAlert: (id: number) => post(`/api/alerts/${id}/ack`),
-  hqInbox: () => req<HqMessage[]>("/api/hq/inbox"),
+  hqInbox: (signal?: AbortSignal) => req<HqMessage[]>("/api/hq/inbox", { signal }),
   inspectCompliance: (period?: Period | null) => post<ComplianceResult>("/api/compliance/inspect", { period: period ?? null }),
   simulateIntake: (period: Period | null, count: number, drop_on_table = false) =>
     post<ComplianceResult>("/api/simulation/intake", { period, count, drop_on_table }),

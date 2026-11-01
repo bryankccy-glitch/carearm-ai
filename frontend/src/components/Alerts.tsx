@@ -10,7 +10,7 @@ const NOTIFY_ZH: Record<string, string> = {
 export function AlertBanner({ info, onAck, onOpen }: { info: AlertsInfo | null; onAck: (id: number) => void; onOpen: () => void }) {
   const open = info?.alerts.filter((a) => a.status === "open") ?? [];
   if (open.length === 0) return null;
-  const top = open[0];
+  const top = open.find((a) => a.level === "URGENT") ?? open[0];
   return (
     <div className={`alert-banner ${top.level.toLowerCase()}`} role="alert">
       <strong>{top.level_zh}</strong>
@@ -36,7 +36,7 @@ export function AlertsTab({ info, inbox, onAck }: { info: AlertsInfo | null; inb
         <table className="alerts-table">
           <thead><tr><th>時間</th><th>等級</th><th>內容</th><th>說的話</th><th>回報</th><th></th></tr></thead>
           <tbody>
-            {(info?.alerts ?? []).map((a: AlertItem) => (
+            {[...(info?.alerts ?? [])].sort((a, b) => Number(b.level === "URGENT") - Number(a.level === "URGENT")).map((a: AlertItem) => (
               <tr key={a.id} className={a.status === "open" ? "open" : "done"}>
                 <td className="num">{a.ts.slice(5, 16).replace("T", " ")}</td>
                 <td><span className={`chip lvl-${a.level.toLowerCase()}`}>{a.level_zh}</span></td>

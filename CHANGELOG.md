@@ -2,6 +2,15 @@
 
 本檔只記錄實際完成的修改。每筆必須包含修改內容、驗證證據與尚未完成事項，不能把計畫寫成已完成。
 
+## 2026-11-01 服藥判定、API 與前端（Claude、Codex）
+
+- 服藥（Claude）：懷疑掉落時不記成已服用；遞送區有盒子但認不出來時，不靠口述記錄；口述只接受明確時段。
+- API（Codex，任務 20261101-215908-303411 逾時後由 Claude 檢查並完成）：條件與時間驗證、音檔大小與類型限制、語音辨識移到工作執行緒並清暫存檔、圖表只提供 run 的 figures 下 PNG。
+- 前端（Codex）：即時時鐘、執行中停用指令、清除舊決策、載入失敗可重試、輪詢不重疊、語音元件卸載清理、頁籤鍵盤操作、緊急通報優先。
+- 啟動：檢查 `.venv` 與 `frontend/dist`，後端就緒才開瀏覽器。
+- 驗證：`mjpython -m pytest -q tests`、WebKit 文字指令流程。
+- 未驗證：瀏覽器裡的完整取藥執行（API 已驗證）、真實麥克風。
+
 ## 2026-11-01 執行安全（Claude）
 
 - 修改：`carearm/api/service.py`、`carearm/database/store.py`、`tests/test_execution_safety.py`。

@@ -26,7 +26,7 @@ function periodState(s: Status, p: string, clock: string): keyof typeof STATE_ZH
   return clock < start ? "waiting" : "passed";
 }
 
-export function TodayCard({ s, clock, onToggle, onResetDay }: { s: Status; clock: string; onToggle: (p: string, v: boolean) => void; onResetDay: () => void }) {
+export function TodayCard({ s, clock, onToggle, onResetDay, disabled }: { disabled?: boolean; s: Status; clock: string; onToggle: (p: string, v: boolean) => void; onResetDay: () => void }) {
   const done = PERIODS.filter((p) => s.taken_today.includes(p)).length;
   return (
     <section className="panel card">
@@ -51,7 +51,7 @@ export function TodayCard({ s, clock, onToggle, onResetDay }: { s: Status; clock
                 </span>
               </div>
               <span className={`chip ${st}`}>{STATE_ZH[st]}</span>
-              <button className="link small" onClick={() => onToggle(p, !s.taken_today.includes(p))}>
+              <button className="link small" disabled={disabled} onClick={() => onToggle(p, !s.taken_today.includes(p))}>
                 {s.taken_today.includes(p) ? "取消" : "標記"}
               </button>
             </li>
@@ -59,7 +59,7 @@ export function TodayCard({ s, clock, onToggle, onResetDay }: { s: Status; clock
         })}
       </ol>
       <p className="muted small">送達算入「今天已取過」（防重複給藥）；相機驗證或照護者確認後才算「已服用」。紀錄存在 SQLite，重啟後保留。</p>
-      <button className="link small" onClick={onResetDay}>開始新的一天（清除今日紀錄）</button>
+      <button className="link small" disabled={disabled} onClick={onResetDay}>開始新的一天（清除今日紀錄）</button>
     </section>
   );
 }

@@ -10,12 +10,17 @@ from __future__ import annotations
 import argparse
 import json
 import tempfile
+from enum import Enum
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
+from carearm.decision.schedule import to_minutes
 
 from carearm.settings import PERIOD_ZH, PERIODS, PROJECT_ROOT, RESULTS_DIR
 
@@ -35,15 +40,32 @@ class PeriodBody(BaseModel):
     time: str | None = None
 
 
+class Lighting(str, Enum):
+    normal = "normal"
+    low = "low"
+    high = "high"
+
+
+class Period(str, Enum):
+    morning = "morning"
+    noon = "noon"
+    evening = "evening"
+
+
+MAX_AUDIO_BYTES = 10 * 1024 * 1024
+AUDIO_TYPES = {"audio/webm": ".webm", "audio/mp4": ".m4a", "audio/ogg": ".ogg",
+               "audio/wav": ".wav", "audio/x-wav": ".wav", "audio/mpeg": ".mp3"}
+
+
 class ConditionBody(BaseModel):
-    lighting: str = "normal"
+    lighting: Lighting = Lighting.normal
     shadow: bool = False
-    occlusion: float = 0.0
-    occlusion_target: str | None = None
-    camera_tilt_deg: float = 0.0
+    occlusion: float = Field(0.0, ge=0, le=1, allow_inf_nan=False)
+    occlusion_target: Period | None = None
+    camera_tilt_deg: float = Field(0.0, ge=-15, le=15, allow_inf_nan=False)
     similar_color: bool = False
     randomize: bool = False
-    seed: int | None = None
+    seed: int | None = Field(None, ge=0, le=2**32 - 1)
 
 
 class ExecuteBody(BaseModel):
@@ -72,14 +94,22 @@ class IntakeBody(BaseModel):
 
 
 def create_app(service=None, *, viewer: bool = False, realtime: bool = True) -> FastAPI:
-    from carearm.api.service import SimulationService
+    if service is None:
+        from carearm.api.service import SimulationService
 
-    svc = service or SimulationService(viewer=viewer, realtime=realtime)
+        service = SimulationService(viewer=viewer, realtime=realtime)
+    svc = service
     app = FastAPI(title="CareArm AI 研究模擬 API")
     app.state.service = svc
     from carearm.speech.asr import WhisperASR
 
     WhisperASR.warmup_async()
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request, error):
+        if request.url.path == "/api/conditions":
+            return JSONResponse(status_code=422, content={"detail": "實驗條件格式或數值範圍錯誤，請檢查後重試"})
+        return await request_validation_exception_handler(request, error)
 
     def guard(fn, *args, **kwargs):
         try:
@@ -101,23 +131,23 @@ def create_app(service=None, *, viewer: bool = False, realtime: bool = True) -> 
 
     @app.post("/api/reset")
     def reset():
-        return svc.reset()
+        return guard(svc.reset)
 
     @app.post("/api/conditions")
     def conditions(body: ConditionBody):
-        visual = body.model_dump(exclude={"randomize", "seed"})
-        if visual["lighting"] not in ("normal", "low", "high"):
-            raise HTTPException(400, "lighting 必須是 normal / low / high")
+        visual = body.model_dump(mode="json", exclude={"randomize", "seed"})
         if body.randomize:
-            return svc.randomize(body.seed, **visual)
-        return svc.reset(visual)
+            return guard(svc.randomize, body.seed, **visual)
+        return guard(svc.reset, visual)
 
     @app.post("/api/randomize")
     def randomize():
-        return svc.randomize()
+        return guard(svc.randomize)
 
     @app.post("/api/command")
     def command(body: CommandBody):
+        if body.time is not None:
+            guard(to_minutes, body.time)
         if not body.text.strip():
             raise HTTPException(400, "指令不可為空")
         asr = None
@@ -127,6 +157,8 @@ def create_app(service=None, *, viewer: bool = False, realtime: bool = True) -> 
 
     @app.post("/api/select_period")
     def select_period(body: PeriodBody):
+        if body.time is not None:
+            guard(to_minutes, body.time)
         if body.period not in PERIODS:
             raise HTTPException(400, "period 必須是 morning / noon / evening")
         return guard(svc.analyze, f"幫我拿{PERIOD_ZH[body.period]}的藥", body.time, "manual")
@@ -135,24 +167,42 @@ def create_app(service=None, *, viewer: bool = False, realtime: bool = True) -> 
     async def audio(file: UploadFile = File(...), time: str | None = Form(None)):
         from carearm.speech.asr import ASRUnavailable, WhisperASR
 
-        content_type = (file.content_type or "").lower()
-        suffix = ".m4a" if "mp4" in content_type else ".ogg" if "ogg" in content_type else (Path(file.filename or "a.webm").suffix or ".webm")
-        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-            tmp.write(await file.read())
-            path = tmp.name
+        path = None
         try:
-            tr = WhisperASR().transcribe(path)
-        except ASRUnavailable as error:
-            svc.log("speech", f"Whisper 無法使用：{error}", "ERROR")
-            raise HTTPException(501, str(error)) from error
-        except Exception as error:  # noqa: BLE001  解碼或模型錯誤也要讓使用者看到
-            svc.log("speech", f"Whisper 辨識失敗（{content_type or suffix}）：{error}", "ERROR")
-            raise HTTPException(500, f"Whisper 辨識失敗：{error}") from error
-        if not tr.text:
-            svc.log("speech", "Whisper 沒有辨識到語音內容", "WARN")
-            raise HTTPException(422, "沒有辨識到語音內容，請靠近麥克風再說一次")
-        return guard(svc.analyze, tr.text, time, "audio", {"engine": tr.engine, "language": tr.language,
-                                                        "avg_logprob_raw": tr.avg_logprob})
+            if time is not None:
+                guard(to_minutes, time)
+            content_type = (file.content_type or "").split(";", 1)[0].strip().lower()
+            suffix = AUDIO_TYPES.get(content_type)
+            if suffix is None:
+                raise HTTPException(415, "不支援的音訊格式")
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                path = tmp.name
+                size = 0
+                while chunk := await file.read(64 * 1024):
+                    size += len(chunk)
+                    if size > MAX_AUDIO_BYTES:
+                        raise HTTPException(413, "音訊檔案不可超過 10 MB")
+                    tmp.write(chunk)
+
+            def process():
+                try:
+                    tr = WhisperASR().transcribe(path)
+                except ASRUnavailable as error:
+                    svc.log("speech", f"Whisper 無法使用：{error}", "ERROR")
+                    raise HTTPException(501, str(error)) from error
+                except Exception as error:
+                    svc.log("speech", f"Whisper 辨識失敗：{error}", "ERROR")
+                    raise HTTPException(500, f"Whisper 辨識失敗：{error}") from error
+                if not tr.text:
+                    raise HTTPException(422, "沒有辨識到語音內容，請靠近麥克風再說一次")
+                return guard(svc.analyze, tr.text, time, "audio", {
+                    "engine": tr.engine, "language": tr.language, "avg_logprob_raw": tr.avg_logprob})
+
+            return await run_in_threadpool(process)
+        finally:
+            if path is not None:
+                Path(path).unlink(missing_ok=True)
+            await file.close()
 
     @app.post("/api/execute")
     def execute(body: ExecuteBody):
@@ -288,10 +338,17 @@ def create_app(service=None, *, viewer: bool = False, realtime: bool = True) -> 
 
     @app.get("/api/experiments/{run_id}/figures/{name}")
     def figure(run_id: str, name: str):
-        path = (RESULTS_DIR / run_id / "figures" / name).resolve()
-        if RESULTS_DIR.resolve() not in path.parents or not path.exists():
+        root = RESULTS_DIR.resolve()
+        run = root / run_id
+        figures = run / "figures"
+        path = figures / name
+        if (run_id in (".", "..") or Path(run_id).name != run_id
+                or Path(name).name != name or not name.endswith(".png")
+                or run.is_symlink() or figures.is_symlink() or path.is_symlink()
+                or run.resolve().parent != root
+                or path.resolve().parent != figures.resolve() or not path.is_file()):
             raise HTTPException(404, "找不到圖表")
-        return FileResponse(path)
+        return FileResponse(path, media_type="image/png")
 
     if FRONTEND_DIST.exists():
         app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")

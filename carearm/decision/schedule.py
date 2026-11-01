@@ -1,6 +1,7 @@
 """模擬服藥排程與重複取藥紀錄。只是研究用的可設定時段，不是醫療排程。"""
 
 from __future__ import annotations
+import re
 
 from dataclasses import asdict, dataclass, field
 
@@ -11,6 +12,8 @@ EARLY_GRACE_MIN = 30    # 時段開始前 30 分鐘內也列為候選
 
 
 def to_minutes(hhmm: str) -> int:
+    if not isinstance(hhmm, str) or re.fullmatch(r"(?:[01][0-9]|2[0-3]):[0-5][0-9]", hhmm) is None:
+        raise ValueError("時間必須為有效的 HH:MM（00:00 至 23:59）")
     h, m = hhmm.split(":")
     return int(h) * 60 + int(m)
 

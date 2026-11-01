@@ -45,6 +45,9 @@ from carearm.speech.intent import IntentClassifier
 CAREGIVER_OVERRIDABLE = {"adherence_verified"}   # 照護者只能覆蓋「相機無法確認藥盒是否已空」
 
 
+PERIOD_SOUNDALIKES = "找棗澡五舞武伍碗挽"   # 早、午、晚的常見同音或近音誤聽
+
+
 class SimulationService:
     def __init__(self, *, viewer: bool = False, realtime: bool = True) -> None:
         self.cfg = load_config()
@@ -55,6 +58,7 @@ class SimulationService:
         self.realtime = realtime
         self._jobs: queue.Queue = queue.Queue()
         self._ready = threading.Event()
+        self._startup_error: Exception | None = None
         self._state_lock = threading.Lock()
         self.state = {
             "robot": "初始化中",
@@ -93,7 +97,10 @@ class SimulationService:
         self.viewer_handle = None
         self.worker = threading.Thread(target=self._run, name="mujoco-worker", daemon=True)
         self.worker.start()
-        self._ready.wait(timeout=120)
+        if not self._ready.wait(timeout=120):
+            raise RuntimeError("模擬環境 120 秒內沒有完成啟動")
+        if self._startup_error is not None:
+            raise RuntimeError(f"模擬環境啟動失敗：{self._startup_error}") from self._startup_error
 
     def _load_day(self) -> None:
         today = self.store.dose_state()
@@ -109,6 +116,15 @@ class SimulationService:
 
     # ---------------------------------------------------------------- worker
     def _run(self) -> None:
+        try:
+            self._start_worker()
+        except Exception as error:  # noqa: BLE001  啟動失敗要讓主執行緒立刻知道，不能讓它空等
+            self._startup_error = error
+            self._ready.set()
+            return
+        self._serve_jobs()
+
+    def _start_worker(self) -> None:
         self.env = make_carearm_env(self.cfg)
         self.sim = self.env.unwrapped
         self.detector = load_detector(self.cfg)
@@ -132,6 +148,8 @@ class SimulationService:
         self._do_reset(SceneConditions())
         self._set(robot="待命")
         self._ready.set()
+
+    def _serve_jobs(self) -> None:
         last_idle_render = 0.0
         while True:
             try:
@@ -150,6 +168,8 @@ class SimulationService:
                 fut.set_exception(error)
 
     def submit(self, fn, *args, wait: bool = True, timeout: float = 300.0):
+        if not self.worker.is_alive():
+            raise RuntimeError("模擬執行緒已停止，請重新啟動服務")
         fut: Future = Future()
         self._jobs.put((fn, args, fut))
         return fut.result(timeout=timeout) if wait else fut
@@ -229,6 +249,13 @@ class SimulationService:
         self._frame = self.sim.render_overhead()
         return self.detector.detect_all(self._frame, self.sim.camera_geometry())
 
+    @staticmethod
+    def _period_may_be_misheard(text: str, source: str, intent, sched) -> bool:
+        """語音辨識可能把「午」聽成「五」。沒有明確時段卻出現同音字時，不能只靠排程推定。"""
+        if source not in ("audio", "browser-asr") or sched.explicit or intent.intent != "REQUEST_MEDICATION":
+            return False
+        return any(char in text for char in PERIOD_SOUNDALIKES)
+
     def _clear_stale_stop(self) -> None:
         """手臂閒置時，舊的停止旗標不該擋住新動作；執行中則絕不清除。"""
         with self._admission:
@@ -302,6 +329,9 @@ class SimulationService:
         raised = []
         found = detect_alerts(text)
         levels = {a.level for a in found}
+        if self._period_may_be_misheard(text, source, intent, sched) and decision.decision == EXECUTE:
+            decision.decision = CONFIRM
+            decision.reasons.append("語音裡可能有聽錯的時段詞：請照護者確認要拿哪一個時段的藥")
         if URGENT in levels and decision.decision != STOP:
             decision.decision = STOP
             decision.target_xy = None

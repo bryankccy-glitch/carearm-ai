@@ -1,0 +1,19 @@
+# CareArm AI — Python 3.12（Apple Silicon / Linux 皆已驗證可安裝；無 CUDA 依賴）
+# 注意：mujoco 必須 ≥3.3.3（需要 MjSpec.delete）且 <3.5（gym-hil 0.1.x 仍使用 MjData.qM）
+mujoco==3.4.0
+gym-hil==0.1.13
+gymnasium==1.4.0
+numpy>=2.0,<3
+scipy==1.18.1
+opencv-python-headless==5.0.0.93
+scikit-learn==1.9.1
+pandas==3.0.6
+matplotlib==3.11.2
+joblib==1.6.0
+pyyaml==6.0.3
+fastapi==0.146.0
+uvicorn==0.54.0
+python-multipart==0.0.32
+pydantic==2.14.1
+pytest==9.1.1
+httpx==0.28.1

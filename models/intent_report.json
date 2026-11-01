@@ -1,0 +1,16 @@
+{
+  "raw": {
+    "accuracy": 0.9595238095238096,
+    "ece": 0.13638299602136417,
+    "mean_confidence": 0.8279312835960191
+  },
+  "calibrated": {
+    "accuracy": 0.9595238095238096,
+    "ece": 0.0192511575513674,
+    "mean_confidence": 0.9604187289864757
+  },
+  "temperature": 0.2909501728977406,
+  "n_train": 1540,
+  "n_calibration": 560,
+  "n_eval": 420
+}

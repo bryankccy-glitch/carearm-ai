@@ -1,0 +1,8 @@
+{
+  "run_id": "main",
+  "n_scenarios": 300,
+  "base_seed": 20261019,
+  "physics_executions": 155,
+  "wall_seconds": 1.5,
+  "finished_at": "2026-10-19T17:34:25"
+}

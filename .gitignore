@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+frontend/node_modules/
+results/smoke/
+*.pyc
+.pytest_cache/
+.sync/
+MUJOCO_LOG.TXT
+*.tsbuildinfo
+.env
+.env.*

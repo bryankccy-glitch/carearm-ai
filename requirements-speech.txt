@@ -1,0 +1,3 @@
+# 選用：真實語音辨識（CPU int8，Apple Silicon 可用；不需 NVIDIA GPU）
+faster-whisper==1.2.1
+opencc-python-reimplemented==0.1.7

@@ -1,0 +1,4 @@
+﻿strategy_a,strategy_b,a_only,b_only,discordant,p_value,n_paired
+D_calibrated_risk,A_vision_only,2,23,25,1.9431114196777344e-05,360
+D_calibrated_risk,B_rule_based,2,0,2,0.5,360
+D_calibrated_risk,C_fixed_threshold,42,0,42,4.547473508864641e-13,360

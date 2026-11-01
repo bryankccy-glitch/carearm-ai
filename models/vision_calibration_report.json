@@ -1,0 +1,71 @@
+{
+  "dataset": {
+    "n_images": 240,
+    "missed_boxes": 19,
+    "seconds": 407.8
+  },
+  "n_labeled": {
+    "train": 362,
+    "calibration": 177,
+    "eval": 175
+  },
+  "false_detections": 0,
+  "temperature": 0.47396570305312313,
+  "raw_hue_softmax": {
+    "accuracy": 0.9942857142857143,
+    "ece": 0.021692128253219745,
+    "mean_confidence": 0.9725935860324944
+  },
+  "calibrated": {
+    "accuracy": 1.0,
+    "ece": 0.003672196046102267,
+    "mean_confidence": 0.9963278039538978
+  },
+  "dot_id_accuracy_all_splits": 0.9397759103641457,
+  "localization_error_mm": {
+    "mean": 1.222458535059062,
+    "p95": 5.098291849234357
+  },
+  "eval_accuracy_by_condition": {
+    "camera_tilt_15": {
+      "n": 35,
+      "accuracy": 1.0
+    },
+    "camera_tilt_8": {
+      "n": 31,
+      "accuracy": 1.0
+    },
+    "clean": {
+      "n": 9,
+      "accuracy": 1.0
+    },
+    "duplicate_box": {
+      "n": 8,
+      "accuracy": 1.0
+    },
+    "light_high": {
+      "n": 40,
+      "accuracy": 1.0
+    },
+    "light_low": {
+      "n": 29,
+      "accuracy": 1.0
+    },
+    "occlusion": {
+      "n": 48,
+      "accuracy": 1.0
+    },
+    "random_positions": {
+      "n": 110,
+      "accuracy": 1.0
+    },
+    "shadow": {
+      "n": 37,
+      "accuracy": 1.0
+    },
+    "similar_color": {
+      "n": 23,
+      "accuracy": 1.0
+    }
+  }
+}

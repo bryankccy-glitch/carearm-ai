@@ -1,0 +1,124 @@
+# CareArm AI 研究模擬設定檔
+# 注意：顏色與服藥時段的對應僅為可設定的研究假設，不是醫療標準。
+# 本系統不做任何真實藥物或劑量決策。
+
+medication_boxes:
+  morning:
+    box_id: "MED-AM-01"
+    label_name: "黃色"
+    label_rgba: [0.95, 0.80, 0.10, 1.0]
+    id_dots: 1            # 標籤上的黑點數＝視覺可讀的盒子識別碼
+    default_position: [0.50, -0.12, 0.02]
+  noon:
+    box_id: "MED-NOON-02"
+    label_name: "藍色"
+    label_rgba: [0.15, 0.40, 0.95, 1.0]
+    id_dots: 2
+    default_position: [0.50, 0.00, 0.02]
+  evening:
+    box_id: "MED-PM-03"
+    label_name: "紫色"
+    label_rgba: [0.60, 0.20, 0.80, 1.0]
+    id_dots: 3
+    default_position: [0.50, 0.12, 0.02]
+
+# 在「相似顏色」實驗條件下替換的標籤顏色（藍紫之間）
+similar_color_rgba:
+  noon: [0.38, 0.30, 0.92, 1.0]
+
+box:
+  half_size: [0.032, 0.018, 0.020]   # 公尺，藥盒外部半尺寸
+  mass: 0.06
+  body_rgba: [0.92, 0.92, 0.90, 1.0]
+  # 開口藥杯：四面牆 + 底板 + 中央「標籤橋」（與牆同高），把杯子分成左右兩格放藥丸。
+  # 時段顏色與識別黑點都印在標籤橋頂面：在盒子正中央、與牆同高，斜看不會被牆擋住，也不會被藥丸蓋住。
+  # 兩格內底是中性灰（低飽和，不會被當成標籤），淺色藥丸在灰底上看得清楚。
+  open_top: true
+  wall: 0.003
+  floor: 0.003
+  bridge_half_x: 0.010               # 標籤橋半長（沿盒子長軸）
+  well_rgba: [0.36, 0.37, 0.40, 1.0]  # 深灰：淺色藥丸在上面對比清楚
+  dot_spacing: 0.009
+  dot_radius: 0.003
+
+# 藥丸（開口藥杯內），淺色以免與黑色識別點混淆
+pills:
+  max_per_box: 5
+  default_per_box: 2
+  radius_range: [0.0032, 0.0048]
+  mass: 0.0006
+  colors:
+    - [0.97, 0.97, 0.95, 1.0]   # 白
+    - [0.98, 0.80, 0.82, 1.0]   # 淺粉
+    - [0.99, 0.85, 0.62, 1.0]   # 淺橘
+    - [0.85, 0.93, 0.98, 1.0]   # 淺藍白
+
+# 手腕相機服藥驗證：比較送達時與再次檢查時的 RGB 影像，不讀模擬器藥丸座標。
+compliance:
+  diff_threshold: 22
+  min_component_area: 35
+  cup_width_fraction: 0.34
+  cup_height_fraction: 0.44
+
+# 遞送區：三個格位沿 X 排列（第一格 = 中心，實驗只用第一格）
+delivery_area:
+  center: [0.30, -0.20, 0.02]
+  half_size: [0.11, 0.05]
+  slot_offsets_x: [0.0, -0.08, 0.08]
+
+# 吃完藥後的空盒回收區（灰色）；三個格位沿 X 排列、間距 8 cm
+# （夾爪手指沿 Y 張開，沿 X 排列才不會在放下時碰到隔壁的盒子）
+collection_area:
+  center: [0.30, 0.20, 0.02]
+  half_size: [0.11, 0.05]
+  slot_offsets_x: [-0.08, 0.0, 0.08]
+
+# 異常狀況回報總部
+# webhook_url: "local" = 內建模擬總部收件匣（儀表板「通報」分頁可看到）；
+#              填入 https://... = 以 JSON POST 送到真正的總部系統；留空 = 只記錄在本機
+alerts:
+  webhook_url: "local"
+  headquarters_name: "照護總部"
+  resident_name: "住民 A"
+
+# 模擬排程（24 小時制，含起不含迄）
+schedule:
+  morning: ["06:00", "10:00"]
+  noon: ["11:00", "14:00"]
+  evening: ["17:00", "21:00"]
+
+camera:
+  name: "overhead"
+  pos: [0.42, 0.0, 0.82]
+  fovy: 52.0
+  width: 640
+  height: 640
+
+randomization:
+  x_range: [0.44, 0.56]
+  y_range: [-0.16, 0.16]
+  yaw_deg: 10.0
+  min_separation: 0.085
+
+decision:
+  # Baseline C：固定未校正信心門檻
+  fixed_confidence_threshold: 0.80
+  # Proposed D：校正後風險門檻（由校正集選出後會寫入 models/risk_model.json，這裡是預設值）
+  risk_execute_below: 0.05
+  risk_stop_above: 0.50
+
+experiments:
+  n_scenarios: 300
+  base_seed: 20261019
+  split: {train: 0.5, calibration: 0.2, test: 0.3}
+
+# 服藥依從性驗證：說「我吃完了」時，手臂先用手腕相機俯看遞送區的藥盒，數盒內剩下的藥丸
+adherence:
+  inspect_camera_height: 0.24        # 手腕相機離桌面高度（公尺）
+  relook_offset: [0.012, -0.012]     # 「再看一次」時相機平移，換個角度避開反光／陰影
+  min_pill_area_mm2: 14              # 小於此面積的斑點視為雜訊
+  pill_area_mm2: 60                  # 估計黏在一起的藥丸數時，每顆的平均俯視面積
+  max_single_pill_mm2: 135           # 凸且小於此面積的斑點算一顆（圓錠約 30–55，膠囊約 80–120）
+  depth_noise_mm: 0.8                # 手腕深度相機雜訊（短距離 RGB-D 約 0.5–1 mm）
+  min_pill_height_mm: 2.5            # 高出內底此高度才算藥丸（藥丸 6–9 mm 高）
+  repeat_claim_alert: 2              # 同一盒「說吃完但盒內仍有藥」達此次數就回報總部

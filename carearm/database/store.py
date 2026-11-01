@@ -95,7 +95,7 @@ class Store:
     # ------------------------------------------------------------ 服藥紀錄（重啟後仍保留）
     # event：dispensed 已送藥／verified_taken 相機確認已空／pills_remaining 盒內仍有藥／unverified 無法確認／
     #        caregiver_confirmed 照護者確認／marked_taken、marked_not_taken 手動標記／day_reset 重設當日
-    RETRIEVED_EVENTS = ("dispensed", "verified_taken", "caregiver_confirmed", "marked_taken")
+    RETRIEVED_EVENTS = ("dispensing", "dispensed", "verified_taken", "caregiver_confirmed", "marked_taken")
     TAKEN_EVENTS = ("verified_taken", "caregiver_confirmed", "marked_taken")
 
     def log_dose(self, period: str | None, event: str, pills_remaining: int | None = None,
@@ -139,6 +139,8 @@ class Store:
                 st["retrieved"] = True
             if row["event"] in self.TAKEN_EVENTS:
                 st["taken"] = True
+            if row["event"] == "dispense_failed":
+                st["retrieved"] = False
             if row["event"] == "marked_not_taken":
                 st["taken"] = False
             if row["event"] in ("verified_taken", "pills_remaining", "unverified", "caregiver_confirmed"):

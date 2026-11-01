@@ -66,9 +66,11 @@ class SimulationService:
             "sim_time": 0.0,
         }
         # 從 SQLite 還原今日紀錄：重啟服務也不會忘記已送過藥（避免重複給藥）
-        today = self.store.dose_state()
-        self.taken_today: set[str] = {p for p, st in today.items() if st["taken"]}
-        self.retrieved_today: set[str] = {p for p, st in today.items() if st["retrieved"]}   # 已送達；仍用來阻擋重複取藥
+        self._admission = threading.Lock()   # 准許執行與停止必須互斥，否則停止可能被清掉、或同一份決策執行兩次
+        self.taken_today: set[str] = set()
+        self.retrieved_today: set[str] = set()   # 已送達或正在送；仍用來阻擋重複取藥
+        self._day = ""
+        self._load_day()
         self.last_adherence: dict | None = None
         self._inspection_frame = None
         self.collected: list[str] = []          # 已收到回收區的盒子（決定下一個格位）
@@ -92,6 +94,18 @@ class SimulationService:
         self.worker = threading.Thread(target=self._run, name="mujoco-worker", daemon=True)
         self.worker.start()
         self._ready.wait(timeout=120)
+
+    def _load_day(self) -> None:
+        today = self.store.dose_state()
+        self.taken_today = {p for p, st in today.items() if st["taken"]}
+        self.retrieved_today = {p for p, st in today.items() if st["retrieved"]}
+        self._day = datetime.now().date().isoformat()
+
+    def _roll_day(self) -> None:
+        """過午夜後，昨天的重複取藥限制與尚未執行的決策都不再適用。"""
+        if datetime.now().date().isoformat() != self._day:
+            self._load_day()
+            self._last_decision = None
 
     # ---------------------------------------------------------------- worker
     def _run(self) -> None:
@@ -175,7 +189,8 @@ class SimulationService:
     # ---------------------------------------------------------------- scene
     def _do_reset(self, cond: SceneConditions) -> dict:
         self.env.reset(seed=0, options={"conditions": cond})
-        RetrievalExecutor(self.env, self.cfg, step_hook=self._hook).move_to_observation_pose()
+        self._clear_stale_stop()
+        RetrievalExecutor(self.env, self.cfg, control=self.control, step_hook=self._hook).move_to_observation_pose()
         self._frame = self.sim.render_overhead()
         self._render_live()
         self._annotated = None
@@ -209,11 +224,31 @@ class SimulationService:
     def _do_perceive(self) -> list:
         """回傳所有標籤（含遞送區、回收區），各自帶 zone 欄位。"""
 
-        RetrievalExecutor(self.env, self.cfg, step_hook=self._hook).move_to_observation_pose()
+        self._clear_stale_stop()
+        RetrievalExecutor(self.env, self.cfg, control=self.control, step_hook=self._hook).move_to_observation_pose()
         self._frame = self.sim.render_overhead()
         return self.detector.detect_all(self._frame, self.sim.camera_geometry())
 
+    def _clear_stale_stop(self) -> None:
+        """手臂閒置時，舊的停止旗標不該擋住新動作；執行中則絕不清除。"""
+        with self._admission:
+            if not self.state["busy"]:
+                self.control.reset()
+
+    def _urgent_stop(self, text: str) -> bool:
+        """緊急指令要立刻停住正在動的手臂，不能排在影像分析後面。"""
+        if not any(a.level == URGENT for a in detect_alerts(text)):
+            return False
+        with self._admission:
+            if self.state["busy"]:
+                self.control.stop_event.set()
+                self.log("robot", "緊急指令：停止目前動作", "ERROR")
+                return True
+        return False
+
     def analyze(self, text: str, time_hhmm: str | None = None, source: str = "text", asr: dict | None = None) -> dict:
+        self._urgent_stop(text)
+        self._roll_day()
         minute = to_minutes(time_hhmm) if time_hhmm else datetime.now().hour * 60 + datetime.now().minute
         t0 = time.perf_counter()
         all_detections = self.submit(self._do_perceive)
@@ -320,11 +355,26 @@ class SimulationService:
         return analysis
 
     # ---------------------------------------------------------------- execution
-    def _do_execute(self) -> dict:
-        decision = self._last_decision
+    def _do_execute(self, decision, place_xy) -> dict:
+        """整段工作都在保護內：任何例外都要回報失敗並解除 busy，不能卡住。"""
+        try:
+            return self._execute_job(decision, place_xy)
+        except Exception as error:
+            self._set(robot=f"待命（執行失敗：{error}）", last_execution={"success": False, "error": str(error)})
+            self.log("robot", f"執行失敗：{error}", "ERROR")
+            raise
+        finally:
+            self._set(busy=False, paused=False)
+
+    def _execute_job(self, decision, place_xy) -> dict:
         period = decision.target_period
         collecting = decision.action == "collect"
-        self._set(busy=True, stage_index=0, robot=f"執行中：{'回收' if collecting else '取'}{PERIOD_ZH[period]}藥盒")
+        # 動手前最後一次確認：批准之後也可能已經送過
+        if not collecting and period in self.retrieved_today:
+            raise PermissionError(f"{PERIOD_ZH[period]}的藥今天已經送過，不重複取藥")
+        if not collecting:
+            self._mark(period, "dispensing")   # 先寫入再動作：中途當機重啟後仍會擋住重複取藥
+        self._set(stage_index=0, robot=f"執行中：{'回收' if collecting else '取'}{PERIOD_ZH[period]}藥盒")
 
         def on_stage(name: str) -> None:
             with self._state_lock:
@@ -333,14 +383,10 @@ class SimulationService:
 
         executor = RetrievalExecutor(self.env, self.cfg, control=self.control, step_hook=self._hook,
                                      realtime=self.realtime, status_cb=on_stage)
-        try:
-            if collecting:
-                result = executor.execute(period, decision.target_xy, place_area="collection", place_xy=self._place_xy)
-            else:
-                result = executor.execute(period, decision.target_xy, place_xy=self._place_xy)
-        except Exception:
-            self._set(busy=False, paused=False)
-            raise
+        if collecting:
+            result = executor.execute(period, decision.target_xy, place_area="collection", place_xy=place_xy)
+        else:
+            result = executor.execute(period, decision.target_xy, place_xy=place_xy)
         self._frame = self.sim.render_overhead()
         self._annotated = None          # 執行後顯示最新畫面，而不是執行前的標註圖
         self._render_live()
@@ -352,10 +398,10 @@ class SimulationService:
         elif result.success:
             self._mark(period, "dispensed", detail={"box_id": box_specs(self.cfg)[period].box_id})
             self._last_delivered_period = period
-            self._delivered_xy[period] = tuple(self._place_xy)
+            self._delivered_xy[period] = tuple(place_xy)
             self._set(robot="手腕相機建立服藥前基準")
             try:
-                wrist, inspections = self._capture(period, self._place_xy)
+                wrist, inspections = self._capture(period, place_xy)
                 baseline = self.compliance.start(period, wrist, self._planned_pill_count(period), inspections[-1])
                 data["compliance_baseline"] = baseline.to_dict()
                 if baseline.method == "rgbd_count" and not baseline.uncertain and inspections[-1].count != self._planned_pill_count(period):
@@ -367,10 +413,12 @@ class SimulationService:
                 self.log("compliance", f"無法建立服藥前基準：{error}", "ERROR")
             self.log("robot", f"成功：{box_specs(self.cfg)[period].box_id} 已放入遞送區（物理驗證）", payload=data)
         else:
+            if not collecting:     # 確定沒送達才解除；例外中斷時狀態不明，維持阻擋由人確認
+                self.store.log_dose(period, "dispense_failed", None, {"stage": result.failure_stage})
+                self.retrieved_today.discard(period)
             self._set(robot=f"待命（失敗：{result.failure_stage}）")
             self.log("robot", f"未成功：{result.failure_stage} {result.error or ''}", "ERROR", payload=data)
-        self._last_decision = None
-        self._set(last_execution=data, busy=False, paused=False)   # 狀態文字更新後才解除 busy
+        self._set(last_execution=data)
         return data
 
     def _planned_pill_count(self, period: str) -> int:
@@ -385,7 +433,7 @@ class SimulationService:
     def _mark(self, period: str, event: str, pills_remaining: int | None = None, detail: dict | None = None) -> None:
         """寫入服藥紀錄（SQLite），並更新今日「已送藥」／「已服用」集合。"""
 
-        if event in ("dispensed", "verified_taken", "caregiver_confirmed", "marked_taken"):
+        if event in ("dispensing", "dispensed", "verified_taken", "caregiver_confirmed", "marked_taken"):
             self.retrieved_today.add(period)
         if event in ("verified_taken", "caregiver_confirmed", "marked_taken"):
             self.taken_today.add(period)
@@ -537,30 +585,37 @@ class SimulationService:
         return None
 
     def execute(self, caregiver_confirmed: bool = False) -> dict:
-        decision = self._last_decision
-        if decision is None:
-            raise ValueError("請先送出指令並完成分析")
-        if decision.decision == EXECUTE:
-            pass
-        elif decision.decision == CONFIRM and caregiver_confirmed:
-            failed = [r for r in decision.rules if not r.passed]
-            if any(r.rule not in CAREGIVER_OVERRIDABLE for r in failed):
-                raise PermissionError("硬性安全限制未通過，照護者確認也不能覆蓋；請先解決原因")
-            if failed:
-                self._mark(decision.target_period, "caregiver_confirmed", detail={"reason": "相機無法確認，照護者確認已服藥"})
-            if decision.target_xy is None:
-                raise PermissionError("沒有可執行的目標")
-            self.log("decision", "照護者已確認，允許執行", "WARN")
-        else:
-            raise PermissionError(f"決策為 {decision.decision}，不允許執行")
-        if self.state["busy"]:
-            raise RuntimeError("手臂正在執行中")
-        self.control.reset()
-        self.submit(self._do_execute, wait=False)
+        with self._admission:
+            self._roll_day()
+            if self.state["busy"]:
+                raise RuntimeError("手臂正在執行中")
+            decision = self._last_decision
+            if decision is None:
+                raise ValueError("請先送出指令並完成分析")
+            if decision.decision == EXECUTE:
+                pass
+            elif decision.decision == CONFIRM and caregiver_confirmed:
+                failed = [r for r in decision.rules if not r.passed]
+                if any(r.rule not in CAREGIVER_OVERRIDABLE for r in failed):
+                    raise PermissionError("硬性安全限制未通過，照護者確認也不能覆蓋；請先解決原因")
+                if failed:
+                    self._mark(decision.target_period, "caregiver_confirmed", detail={"reason": "相機無法確認，照護者確認已服藥"})
+                if decision.target_xy is None:
+                    raise PermissionError("沒有可執行的目標")
+                self.log("decision", "照護者已確認，允許執行", "WARN")
+            else:
+                raise PermissionError(f"決策為 {decision.decision}，不允許執行")
+            # 一份決策只能用一次；工作帶著這份快照，之後的新分析不會改到它
+            self._last_decision = None
+            self.control.reset()
+            self._set(busy=True)
+            place_xy = self._place_xy
+        self.submit(self._do_execute, decision, place_xy, wait=False)
         return {"started": True}
 
     def stop(self) -> None:
-        self.control.stop_event.set()
+        with self._admission:
+            self.control.stop_event.set()
         self.log("robot", "緊急停止", "WARN")
 
     def pause(self, paused: bool) -> None:

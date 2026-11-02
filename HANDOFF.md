@@ -207,7 +207,7 @@ python -m carearm.experiments.runner --run-id main         # 重跑實驗
 - 建立 git 並修正：一份決策只能執行一次、急停全程有效、失敗後解除 busy、當機重啟仍擋重複取藥、過午夜換日、懷疑掉落不記成已服用、API 與音檔驗證、前端與啟動腳本。細節見 `CHANGELOG.md`。
 - 驗證：`.venv/bin/mjpython -m pytest -q tests` → 140 passed；API 跑完取藥；WebKit 文字指令流程。
 - 未驗證：瀏覽器內完整取藥、真實麥克風、真實硬體、並發壓力測試。
-- 已知限制：被遮住的重複藥盒無法由影像發現；通報無持久重試；D 策略門檻僅為經驗值。
+- 已知限制：被遮住的重複藥盒無法由影像發現；D 策略門檻僅為經驗值。
 - 測試時請把 `CAREARM_DB` 指到暫存路徑；`results/carearm.sqlite` 是執行資料，未追蹤。
 
 ### 2026-10-28：完成國科會 C802 規格研究計畫書

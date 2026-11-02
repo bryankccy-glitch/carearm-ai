@@ -2,6 +2,13 @@
 
 本檔只記錄實際完成的修改。每筆必須包含修改內容、驗證證據與尚未完成事項，不能把計畫寫成已完成。
 
+## 2026-11-02 通報失敗會持久重試
+
+- 檔案：`carearm/safety/alerts.py`、`tests/test_alert_retry.py`、`HANDOFF.md`。
+- 行為：送失敗的通報保存內容與嘗試次數，最多 3 次（含首次），`alerts.max_attempts` 可調；啟動時在背景重送，也可呼叫 `retry_failed()`；中斷在送出途中的通報重啟後會再送。舊資料庫自動加欄。
+- 驗證：`.venv/bin/mjpython -m pytest -q tests` 149 passed，送出都用替身，沒有連真實 webhook。
+- 未驗證：真實 webhook 斷線情境；目前只有啟動時會自動重送，執行中沒有定時重送。
+
 ## 2026-11-02 status 改讀一致快照
 
 - 檔案：`carearm/api/service.py`、`tests/test_status_snapshot.py`、`HANDOFF.md`。

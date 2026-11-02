@@ -49,10 +49,11 @@ class Alert:
     id: int | None = None
     ts: str = ""
     status: str = "open"                 # open / acknowledged
-    notify_status: str = "pending"       # pending / delivered / failed / disabled
+    notify_status: str = "pending"       # pending / sending / delivered / failed / disabled
     notify_detail: str = ""
     ack_by: str | None = None
     ack_ts: str | None = None
+    notify_attempts: int = 0
 
     def to_dict(self) -> dict:
         data = asdict(self)
@@ -80,7 +81,8 @@ class AlertCenter:
     CREATE TABLE IF NOT EXISTS alerts (
         id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, level TEXT, category TEXT, message TEXT,
         transcript TEXT, matched TEXT, status TEXT, notify_status TEXT, notify_detail TEXT,
-        ack_by TEXT, ack_ts TEXT
+        ack_by TEXT, ack_ts TEXT, notify_attempts INTEGER NOT NULL DEFAULT 0,
+        notify_payload TEXT
     );
     CREATE TABLE IF NOT EXISTS hq_inbox (
         id INTEGER PRIMARY KEY AUTOINCREMENT, received_ts TEXT, payload TEXT
@@ -93,10 +95,21 @@ class AlertCenter:
         self.webhook_url = str(acfg.get("webhook_url", "local") or "").strip()
         self.hq_name = acfg.get("headquarters_name", "照護總部")
         self.resident = acfg.get("resident_name", "住民 A")
+        self.max_attempts = max(1, int(acfg.get("max_attempts", 3)))
         self.blocked_times: list[datetime] = []
         with store._lock:
             store.conn.executescript(self.SCHEMA)
+            columns = {row[1] for row in store.conn.execute("PRAGMA table_info(alerts)")}
+            if "notify_attempts" not in columns:
+                store.conn.execute("ALTER TABLE alerts ADD COLUMN notify_attempts INTEGER NOT NULL DEFAULT 0")
+                store.conn.execute("UPDATE alerts SET notify_attempts = 1 WHERE notify_status IN ('failed', 'delivered')")
+            if "notify_payload" not in columns:
+                store.conn.execute("ALTER TABLE alerts ADD COLUMN notify_payload TEXT")
+            # 上次送到一半就中斷的通報不算成功，改回失敗才會再送
+            store.conn.execute("UPDATE alerts SET notify_status = 'failed' WHERE notify_status = 'sending'")
             store.conn.commit()
+        # 總部連不上時不可拖住服務啟動
+        threading.Thread(target=self.retry_failed, daemon=True).start()
 
     # ---------------------------------------------------------- behavior rule
     def note_blocked_request(self, reason: str, transcript: str) -> Alert | None:
@@ -137,10 +150,44 @@ class AlertCenter:
                 "headquarters": self.hq_name,
                 "disclaimer": "研究模擬通報，非醫療診斷",
             }
+            self._update(alert.id, notify_payload=json.dumps(payload, ensure_ascii=False))
             threading.Thread(target=self._deliver, args=(alert.id, payload), daemon=True).start()
         return alert
 
-    def _deliver(self, alert_id: int, payload: dict) -> None:
+    def retry_failed(self) -> int:
+        """同步重送一輪失敗通報，回傳實際嘗試筆數；次數包含首次送出。"""
+        if not self.webhook_url:
+            return 0
+        with self.store._lock:
+            rows = self.store.conn.execute(
+                "SELECT id, notify_payload, ts, level, category, message, transcript "
+                "FROM alerts WHERE notify_status = 'failed' AND notify_attempts < ? ORDER BY id",
+                (self.max_attempts,),
+            ).fetchall()
+        attempted = 0
+        for row in rows:
+            # 舊版沒有保存 payload，使用原通報資料補建。
+            payload = json.loads(row[1]) if row[1] else {
+                "type": "carearm_alert", "alert_id": row[0], "time": row[2],
+                "level": row[3], "level_zh": LEVEL_ZH.get(row[3], row[3]),
+                "category": row[4], "message": row[5], "transcript": row[6],
+                "resident": self.resident, "headquarters": self.hq_name,
+                "context": {}, "disclaimer": "研究模擬通報，非醫療診斷",
+            }
+            attempted += self._deliver(row[0], payload, retry=True)
+        return attempted
+
+    def _deliver(self, alert_id: int, payload: dict, *, retry: bool = False) -> bool:
+        # 送出前先原子登記次數，避免併發呼叫重複取得同一筆通報。
+        with self.store._lock:
+            cur = self.store.conn.execute(
+                "UPDATE alerts SET notify_attempts = notify_attempts + 1, notify_status = 'sending' "
+                "WHERE id = ? AND notify_status = ? AND notify_attempts < ?",
+                (alert_id, "failed" if retry else "pending", self.max_attempts),
+            )
+            self.store.conn.commit()
+            if not cur.rowcount:
+                return False
         try:
             if self.webhook_url == "local":
                 self.receive_hq(payload)
@@ -153,6 +200,7 @@ class AlertCenter:
         except Exception as error:  # noqa: BLE001
             status, detail = "failed", f"送出失敗：{error}"
         self._update(alert_id, notify_status=status, notify_detail=detail)
+        return True
 
     def receive_hq(self, payload: dict) -> None:
         """內建的模擬總部收件匣（webhook_url = "local"）。"""
@@ -174,12 +222,12 @@ class AlertCenter:
     def list(self, limit: int = 100) -> list[dict]:
         with self.store._lock:
             rows = self.store.conn.execute(
-                "SELECT id, ts, level, category, message, transcript, matched, status, notify_status, notify_detail, ack_by, ack_ts "
+                "SELECT id, ts, level, category, message, transcript, matched, status, notify_status, notify_detail, ack_by, ack_ts, notify_attempts "
                 "FROM alerts ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
         out = []
         for r in rows:
             a = Alert(id=r[0], ts=r[1], level=r[2], category=r[3], message=r[4], transcript=r[5], matched=json.loads(r[6] or "[]"),
-                      status=r[7], notify_status=r[8], notify_detail=r[9] or "", ack_by=r[10], ack_ts=r[11])
+                      status=r[7], notify_status=r[8], notify_detail=r[9] or "", ack_by=r[10], ack_ts=r[11], notify_attempts=r[12])
             out.append(a.to_dict())
         return out
 

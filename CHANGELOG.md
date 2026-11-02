@@ -2,6 +2,13 @@
 
 本檔只記錄實際完成的修改。每筆必須包含修改內容、驗證證據與尚未完成事項，不能把計畫寫成已完成。
 
+## 2026-11-02 status 改讀一致快照
+
+- 檔案：`carearm/api/service.py`、`tests/test_status_snapshot.py`、`HANDOFF.md`。
+- 行為：worker 執行緒發布模擬快照，`status` 不再從其他執行緒讀 MuJoCo，模擬忙碌時也能立刻回應；執行中位置約每 0.1 秒更新。決策、模型與實驗結果不變。
+- 驗證：`.venv/bin/mjpython -m pytest -q tests` 143 passed；新測試在舊程式上失敗。
+- 未驗證：瀏覽器實際操作中的即時位置顯示。
+
 ## 2026-11-01 啟動與語音（Claude）
 
 - 模擬環境啟動失敗立刻回報，工作執行緒停止時拒絕新工作。

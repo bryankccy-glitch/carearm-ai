@@ -69,6 +69,8 @@ class SimulationService:
             "conditions": None,
             "sim_time": 0.0,
         }
+        self._sim_view: dict = {}   # worker 發布的模擬快照；其他執行緒只讀這份，不碰 MuJoCo
+        self._last_publish = 0.0
         # 從 SQLite 還原今日紀錄：重啟服務也不會忘記已送過藥（避免重複給藥）
         self._admission = threading.Lock()   # 准許執行與停止必須互斥，否則停止可能被清掉、或同一份決策執行兩次
         self.taken_today: set[str] = set()
@@ -146,6 +148,7 @@ class SimulationService:
             except Exception as error:  # macOS 需用 mjpython 啟動
                 self.log("viewer", f"無法開啟 MuJoCo 原生視窗：{error}", "WARN")
         self._do_reset(SceneConditions())
+        self._publish_sim()
         self._set(robot="待命")
         self._ready.set()
 
@@ -163,7 +166,9 @@ class SimulationService:
                     last_idle_render = now
                 continue
             try:
-                fut.set_result(fn(*args))
+                result = fn(*args)
+                self._publish_sim()
+                fut.set_result(result)
             except Exception as error:  # noqa: BLE001
                 fut.set_exception(error)
 
@@ -175,8 +180,33 @@ class SimulationService:
         return fut.result(timeout=timeout) if wait else fut
 
     def _set(self, **kw) -> None:
+        if kw.get("busy") is False and threading.current_thread() is self.worker:
+            self._publish_sim()   # 網頁看到「已閒置」時，位置必須已是最後狀態
         with self._state_lock:
             self.state.update(kw)
+
+    def _publish_sim(self) -> None:
+        """只在 worker 執行緒呼叫：把模擬狀態整份換成一致的快照，status 不必讀執行中的 MuJoCo。"""
+
+        specs = box_specs(self.cfg)
+        delivery, collection = self.cfg["delivery_area"], self.cfg["collection_area"]
+
+        def inside(pos, area) -> bool:
+            return bool(np.all(np.abs(pos[:2] - np.asarray(area["center"][:2])) <= np.asarray(area["half_size"])))
+
+        boxes = {}
+        for p in PERIODS:
+            pos = self.sim.box_position(p)
+            boxes[p] = {"box_id": specs[p].box_id, "label": specs[p].label_name, "period_zh": PERIOD_ZH[p],
+                        "sim_position": [round(float(v), 4) for v in pos],
+                        "in_delivery": inside(pos, delivery),
+                        "in_collection": inside(pos, collection),
+                        "planned_pills": self._planned_pill_count(p)}
+        view = {"boxes": boxes,
+                "tcp": [round(float(v), 4) for v in self.sim.tcp_position],
+                "gripper": round(float(self.sim.get_gripper_pose()[0]) / 255.0, 3)}   # 0 張開 → 1 閉合
+        with self._state_lock:
+            self._sim_view = view
 
     def log(self, source: str, message: str, level: str = "INFO", payload: dict | None = None) -> None:
         self.store.log_event(source, message, level, payload)
@@ -204,6 +234,9 @@ class SimulationService:
         if now - self._last_live_request < 3.0 and now - self._last_live_render > 0.15:
             self._render_live()
             self._last_live_render = now
+        if now - self._last_publish > 0.1:
+            self._publish_sim()
+            self._last_publish = now
         self._set(sim_time=float(self.sim.data.time))
 
     # ---------------------------------------------------------------- scene
@@ -695,21 +728,11 @@ class SimulationService:
     def status(self) -> dict:
         with self._state_lock:
             state = dict(self.state)
-        boxes = {}
-        if hasattr(self, "sim"):
-            specs = box_specs(self.cfg)
-            for p in PERIODS:
-                pos = self.sim.box_position(p)
-                boxes[p] = {"box_id": specs[p].box_id, "label": specs[p].label_name, "period_zh": PERIOD_ZH[p],
-                            "sim_position": [round(float(v), 4) for v in pos],
-                            "in_delivery": bool(np.all(np.abs(pos[:2] - np.asarray(self.cfg["delivery_area"]["center"][:2]))
-                                                        <= np.asarray(self.cfg["delivery_area"]["half_size"]))),
-                            "in_collection": bool(np.all(np.abs(pos[:2] - np.asarray(self.cfg["collection_area"]["center"][:2]))
-                                                          <= np.asarray(self.cfg["collection_area"]["half_size"]))),
-                            "taken_today": p in self.taken_today,
-                            "planned_pills": self._planned_pill_count(p)}
-            state["tcp"] = [round(float(v), 4) for v in self.sim.tcp_position]
-            state["gripper"] = round(float(self.sim.get_gripper_pose()[0]) / 255.0, 3)   # 0 張開 → 1 閉合
+            view = self._sim_view
+        boxes = {p: {**box, "taken_today": p in self.taken_today} for p, box in view.get("boxes", {}).items()}
+        if view:
+            state["tcp"] = view["tcp"]
+            state["gripper"] = view["gripper"]
         state["boxes"] = boxes
         state["taken_today"] = sorted(self.taken_today)
         state["retrieved_today"] = sorted(self.retrieved_today)

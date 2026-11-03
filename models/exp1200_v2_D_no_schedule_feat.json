@@ -1,0 +1,39 @@
+{
+  "features": [
+    "intent_conf",
+    "intent_margin",
+    "keyword_agrees",
+    "oov_ratio",
+    "period_homophone",
+    "vision_conf",
+    "vision_margin",
+    "area_ratio",
+    "rectangularity",
+    "label_brightness",
+    "n_color_candidates"
+  ],
+  "coefficients": {
+    "intent_conf": 0.1802517018192622,
+    "intent_margin": -0.5972163589501166,
+    "keyword_agrees": -1.866960236819997,
+    "oov_ratio": -1.3134971547458876,
+    "period_homophone": 0.6769712765883016,
+    "vision_conf": 0.8169545076768063,
+    "vision_margin": 0.8118293070889842,
+    "area_ratio": 0.45299997022439964,
+    "rectangularity": -0.06640453187297723,
+    "label_brightness": -0.6186602515438824,
+    "n_color_candidates": -0.03910365888552882
+  },
+  "platt_slope": 1.2752938118516421,
+  "platt_applied": true,
+  "calibrated": true,
+  "execute_below": 0.3049820905176984,
+  "stop_above": 0.5,
+  "max_auto_error_target": 0.02,
+  "calibration_n": 93,
+  "calibration_positive_rate": 0.021505376344086023,
+  "calibration_coverage": 0.989247311827957,
+  "train_n": 233,
+  "train_positive_rate": 0.017167381974248927
+}

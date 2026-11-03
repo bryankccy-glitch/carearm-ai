@@ -29,3 +29,25 @@ def test_physics_is_deterministic(env, cfg):
         r = ex.execute("noon", (round(p[0], 4), round(p[1], 4)))
         finals.append((r.success, r.sim_steps, tuple(env.unwrapped.box_position("noon").round(6))))
     assert finals[0] == finals[1]
+
+
+def test_stress_profile_only_changes_the_condition_rates(cfg):
+    import copy
+    from carearm.experiments.scenarios import generate_suite
+    stress = copy.deepcopy(cfg)
+    stress["experiments"]["profile"] = "stress"
+    a, b = generate_suite(400, 20261019, cfg), generate_suite(400, 20261019, stress)
+    share = lambda suite, tag: sum(tag in s.tags for s in suite) / len(suite)
+    assert share(b, "occlusion") > share(a, "occlusion") + 0.1
+    assert share(b, "duplicate_box") > share(a, "duplicate_box") + 0.04
+    assert [s.split for s in a] == [s.split for s in b]   # same split, so train/cal/test never mix
+
+
+def test_unknown_profile_is_rejected(cfg):
+    import copy
+    import pytest
+    from carearm.experiments.scenarios import generate_suite
+    bad = copy.deepcopy(cfg)
+    bad["experiments"]["profile"] = "typo"
+    with pytest.raises(ValueError):
+        generate_suite(3, 1, bad)

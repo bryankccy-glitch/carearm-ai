@@ -163,3 +163,29 @@ def test_collect_decision_rules(cfg):
     assert picked.decision == EXECUTE and picked.target_period == "morning" and picked.target_xy == (0.22, -0.2)
     ok = collect_decision([det("evening", 3, (0.3, -0.2))], cfg)
     assert ok.decision == EXECUTE and ok.target_period == "evening" and ok.action == "collect"
+
+
+# ---- phase 2: hidden duplicate rule (exp1200 scenario 1052) and the period-homophone feature
+def test_hidden_duplicate_asks_even_with_low_risk(cfg):
+    # Two evening-coloured boxes: the target reads 3 dots, the other is half hidden and reads 0.
+    dets = [f() for f in GOOD] + [det("evening", 0, (0.6, 0.2))]
+    d = CalibratedRisk(cfg, AlwaysLow()).decide(obs(cfg, intent("SPECIFY_EVENING", "evening"), "19:00", dets))
+    assert d.decision == CONFIRM and d.risk is None
+    assert any(r.rule == "no_hidden_duplicate" and not r.passed for r in d.rules)
+
+
+def test_other_colour_box_with_a_known_code_is_not_a_hidden_duplicate(cfg):
+    # A noon-coloured box that clearly reads another known code is a different box, not a hidden copy.
+    dets = [f() for f in GOOD] + [det("noon", 1, (0.6, 0.2))]
+    d = RuleBased(cfg).decide(obs(cfg, intent("SPECIFY_EVENING", "evening"), "19:00", dets))
+    assert d.decision == EXECUTE
+
+
+def test_period_homophone_feature_follows_the_intent_field(cfg):
+    from carearm.decision.engine import ALL_FEATURES, build_features
+    assert "period_homophone" in ALL_FEATURES
+    o = obs(cfg, intent("REQUEST_MEDICATION"), "18:30", [f() for f in GOOD])
+    assert build_features(o, "evening", 2, [2])["period_homophone"] == 0.0
+    import dataclasses
+    o = obs(cfg, dataclasses.replace(intent("REQUEST_MEDICATION"), homophone_period="noon"), "18:30", [f() for f in GOOD])
+    assert build_features(o, "evening", 2, [2])["period_homophone"] == 1.0

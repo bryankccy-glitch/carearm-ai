@@ -110,6 +110,7 @@ decision:
 experiments:
   n_scenarios: 300
   base_seed: 20261019
+  profile: default                  # default（第一階段）或 stress（第二階段壓力情境），見 experiments/scenarios.py
   split: {train: 0.5, calibration: 0.2, test: 0.3}
 
 # 服藥依從性驗證：說「我吃完了」時，手臂先用手腕相機俯看遞送區的藥盒，數盒內剩下的藥丸

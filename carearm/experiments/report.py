@@ -23,13 +23,14 @@ STRATEGY_ZH = {
     "C_fixed_threshold": "C 固定信心門檻",
     "D_calibrated_risk": "D 校正風險感知（本研究）",
     "D_no_speech_conf": "D − 語音信心",
+    "D_no_period_homophone": "D − 時段近音字",
     "D_no_vision_conf": "D − 視覺信心",
     "D_no_schedule_feat": "D − 排程特徵",
     "D_no_calibration": "D − 風險校正",
     "E_conformal": "E Conformal 風險控制",
 }
 MAIN = ["A_vision_only", "B_rule_based", "C_fixed_threshold", "D_calibrated_risk", "E_conformal"]
-ABL = ["D_calibrated_risk", "D_no_speech_conf", "D_no_vision_conf", "D_no_schedule_feat", "D_no_calibration"]
+ABL = ["D_calibrated_risk", "D_no_speech_conf", "D_no_period_homophone", "D_no_vision_conf", "D_no_schedule_feat", "D_no_calibration"]
 ORANGE, CHARCOAL, GREY = "#F07B1A", "#2B2B2B", "#9A9A9A"
 
 

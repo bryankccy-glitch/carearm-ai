@@ -48,6 +48,8 @@ ABLATIONS = {
     "D_no_speech_conf": [f for f in ALL_FEATURES if f not in FEATURE_GROUPS["speech"]],
     "D_no_vision_conf": [f for f in ALL_FEATURES if f not in FEATURE_GROUPS["vision"]],
     "D_no_schedule_feat": [f for f in ALL_FEATURES if f not in FEATURE_GROUPS["schedule"]],
+    # Phase 2 (H7): removes only the period-homophone feature, so its own effect can be measured.
+    "D_no_period_homophone": [f for f in ALL_FEATURES if f != "period_homophone"],
 }
 
 
@@ -63,10 +65,14 @@ class ExperimentRunner:
         base_seed: int | None = None,
         cfg: dict | None = None,
         alpha: float = 0.02,
+        profile: str | None = None,
     ) -> None:
         if not 0 < alpha < 1:
             raise ValueError("alpha 必須介於 0 與 1 之間")
         self.cfg = cfg or load_config()
+        if profile is not None:
+            self.cfg["experiments"]["profile"] = profile
+        self.profile = self.cfg["experiments"].get("profile", "default")
         self.n = n or int(self.cfg["experiments"]["n_scenarios"])
         self.base_seed = base_seed if base_seed is not None else int(self.cfg["experiments"]["base_seed"])
         self.run_id = run_id
@@ -309,7 +315,7 @@ class ExperimentRunner:
         pd.DataFrame([s.to_dict() for s in self.scenarios]).to_csv(self.dir / "scenarios.csv", index=False, encoding="utf-8-sig")
         (self.dir / "run_meta.json").write_text(json.dumps({
             "run_id": self.run_id, "n_scenarios": self.n, "base_seed": self.base_seed,
-            "conformal_alpha": self.alpha,
+            "conformal_alpha": self.alpha, "scenario_profile": self.profile,
             "physics_executions": len(self.exec_cache), "wall_seconds": round(time.time() - t0, 1),
             "finished_at": datetime.now().isoformat(timespec="seconds"),
         }, indent=2), encoding="utf-8")
@@ -324,8 +330,9 @@ def main() -> None:
     parser.add_argument("--n", type=int, default=None, help="情境數（預設讀 config，300）")
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--alpha", type=float, default=0.02, help="策略 E 的 conformal 風險上限（預設 0.02）")
+    parser.add_argument("--profile", default=None, help="情境分佈：default（第一階段）或 stress（第二階段壓力情境）")
     args = parser.parse_args()
-    out = ExperimentRunner(args.run_id, args.n, args.seed, alpha=args.alpha).run()
+    out = ExperimentRunner(args.run_id, args.n, args.seed, alpha=args.alpha, profile=args.profile).run()
     from carearm.experiments.report import build_report
 
     build_report(out.parent)

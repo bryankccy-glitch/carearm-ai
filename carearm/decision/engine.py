@@ -27,7 +27,7 @@ CONFIRM = "REQUEST_CONFIRMATION"
 STOP = "STOP"
 
 FEATURE_GROUPS = {
-    "speech": ["intent_conf", "intent_margin", "keyword_agrees", "oov_ratio"],
+    "speech": ["intent_conf", "intent_margin", "keyword_agrees", "oov_ratio", "period_homophone"],
     "vision": ["vision_conf", "vision_margin", "area_ratio", "rectangularity", "label_brightness", "n_color_candidates"],
     "schedule": ["minutes_from_window", "explicit_period", "n_plausible"],
 }
@@ -148,6 +148,15 @@ def hard_constraints(obs: Observation, cfg: dict, period: str | None, index: int
         same = [i for i in cands if obs.detections[i].dot_count == det.dot_count]
         rules.append(RuleResult("unique_target", len(same) <= 1,
                                 "目標唯一" if len(same) <= 1 else f"偵測到 {len(same)} 個無法區分的目標藥盒"))
+        # Another box of the same colour whose identity code cannot be read (for example, half hidden
+        # behind a hand) may be a second copy of the target. It is not proof of a duplicate, so ask
+        # the caregiver instead of stopping. (Phase-1 failure: exp1200 scenario 1052.)
+        known_ids = {spec.id_dots for spec in box_specs(cfg).values()}
+        unreadable = [i for i in cands if i != index and obs.detections[i].dot_count not in known_ids]
+        rules.append(RuleResult("no_hidden_duplicate", not unreadable,
+                                "同色藥盒的識別碼都可辨識" if not unreadable else
+                                f"另有 {len(unreadable)} 個同色藥盒讀不到識別碼，可能是被遮住的重複藥盒",
+                                CONFIRM))
     return rules
 
 
@@ -170,6 +179,8 @@ def build_features(obs: Observation, period: str, index: int, cands: list[int]) 
         "intent_margin": intent.margin,
         "keyword_agrees": agrees,
         "oov_ratio": intent.oov_ratio,
+        # 1 when no period word survived ASR but a near-homophone of one did ("中午" heard as "五").
+        "period_homophone": 1.0 if getattr(intent, "homophone_period", None) else 0.0,
         "vision_conf": float(probs[period]),
         "vision_margin": float(ordered[0] - ordered[1]),
         "area_ratio": det.area_ratio,

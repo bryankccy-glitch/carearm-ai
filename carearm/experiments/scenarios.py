@@ -65,6 +65,23 @@ class Scenario:
         return asdict(self)
 
 
+# Scenario distributions. "default" reproduces phase 1 exactly; "stress" raises ASR noise, occlusion
+# and duplicate boxes so that more cases still go wrong after the Layer 1 rules (phase 2, H5-H8).
+PROFILES: dict[str, dict] = {
+    "default": {"occlusion_prob": 0.3, "duplicate_box_prob": 0.06,
+                "noise_weights": {0.0: 0.4, 0.1: 0.2, 0.2: 0.2, 0.3: 0.2}},
+    "stress": {"occlusion_prob": 0.5, "duplicate_box_prob": 0.2,
+               "noise_weights": {0.0: 0.15, 0.1: 0.2, 0.2: 0.3, 0.3: 0.35}},
+}
+
+
+def profile_of(cfg: dict) -> dict:
+    name = cfg.get("experiments", {}).get("profile", "default")
+    if name not in PROFILES:
+        raise ValueError(f"unknown scenario profile {name!r}; choose from {sorted(PROFILES)}")
+    return PROFILES[name]
+
+
 def _weighted(rng: random.Random, weights: dict):
     keys = list(weights)
     return rng.choices(keys, weights=[weights[k] for k in keys])[0]
@@ -120,12 +137,13 @@ def sample_scene_conditions(rng: random.Random, cfg: dict, focus_period: str | N
     if similar:
         tags.append("similar_color")
     occlusion, occ_target = 0.0, None
-    if rng.random() < 0.3:
+    prof = profile_of(cfg)
+    if rng.random() < prof["occlusion_prob"]:
         occlusion = round(rng.uniform(0.2, 0.75), 2)
         occ_target = focus_period if (focus_period and rng.random() < 0.6) else rng.choice(PERIODS)
         tags.append("occlusion")
     extra = None
-    if rng.random() < 0.06:
+    if rng.random() < prof["duplicate_box_prob"]:
         spot = _free_spot(rng, cfg, positions)
         if spot is not None:
             copy_of = focus_period if (focus_period and rng.random() < 0.6) else rng.choice(PERIODS)
@@ -193,7 +211,7 @@ def generate_scenario(index: int, n: int, base_seed: int, cfg: dict | None = Non
 
     focus = target or requested
     cond, tags = sample_scene_conditions(rng, cfg, focus)
-    noise = _weighted(rng, {0.0: 0.4, 0.1: 0.2, 0.2: 0.2, 0.3: 0.2})
+    noise = _weighted(rng, profile_of(cfg)["noise_weights"])
     clean = render_command(intent, rng, allow_held_out=True)
     transcript = simulate_asr(clean, noise, rng)
     if noise:

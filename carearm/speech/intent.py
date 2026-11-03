@@ -74,6 +74,14 @@ CONFUSIONS = {
 }
 FILLERS = ["嗯", "那個", "呃", "就是"]
 
+PERIOD_HOMOPHONES: dict[str, str] = {
+    homophone: period
+    for char, period in {
+        "早": "morning", "午": "noon", "中": "noon", "晚": "evening", "睡": "evening",
+    }.items()
+    for homophone in CONFUSIONS[char]
+}
+
 
 @dataclass(frozen=True)
 class IntentResult:
@@ -86,6 +94,7 @@ class IntentResult:
     keyword_period: str | None     # 規則式關鍵字抽出的時段（交叉驗證用）
     period: str | None             # 意圖對應的時段（SPECIFY_* 才有）
     oov_ratio: float               # 轉錄文字中不在詞彙表的字比例（雜訊代理特徵）
+    homophone_period: str | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -126,6 +135,17 @@ def keyword_period(text: str) -> str | None:
     """透明規則式時段抽取；若同時出現多個時段詞則回傳 None。"""
 
     found = {p for p, words in _PERIOD_WORDS.items() for w in words if w in text}
+    return found.pop() if len(found) == 1 else None
+
+
+def homophone_period(text: str) -> str | None:
+    """無完整時段詞時，回傳近音字唯一指向的可能時段。"""
+
+    if keyword_period(text) is not None or any(
+        word in text for words in _PERIOD_WORDS.values() for word in words
+    ):
+        return None
+    found = {PERIOD_HOMOPHONES[char] for char in text if char in PERIOD_HOMOPHONES}
     return found.pop() if len(found) == 1 else None
 
 
@@ -210,6 +230,7 @@ class IntentClassifier:
             keyword_period=keyword_period(text),
             period=INTENT_TO_PERIOD.get(intent),
             oov_ratio=float(oov),
+            homophone_period=homophone_period(text),
         )
 
     def probs_matrix(self, texts, *, calibrated: bool = True) -> np.ndarray:

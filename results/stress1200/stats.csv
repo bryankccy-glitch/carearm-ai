@@ -1,0 +1,51 @@
+﻿strategy,策略,metric,estimate,ci_low,ci_high,n_boot
+A_vision_only,A 純視覺,correct_retrieval_rate,0.3861111111111111,0.3333333333333333,0.4361111111111111,2000
+A_vision_only,A 純視覺,wrong_box_rate,0.26944444444444443,0.2222222222222222,0.31395833333333295,2000
+A_vision_only,A 純視覺,error_rate_among_executed,0.4110169491525424,0.3466622807017544,0.47561378532287524,2000
+A_vision_only,A 純視覺,human_confirmation_rate,0.0,0.0,0.0,2000
+A_vision_only,A 純視覺,unsafe_action_interception_rate,0.5076923076923077,0.43813599528132535,0.5772738987816307,2000
+B_rule_based,B 規則式多模態,correct_retrieval_rate,0.3111111111111111,0.2611111111111111,0.3611111111111111,2000
+B_rule_based,B 規則式多模態,wrong_box_rate,0.011111111111111112,0.002777777777777778,0.022222222222222223,2000
+B_rule_based,B 規則式多模態,error_rate_among_executed,0.034482758620689655,0.007810985949612403,0.0707070707070707,2000
+B_rule_based,B 規則式多模態,human_confirmation_rate,0.10555555555555556,0.075,0.1388888888888889,2000
+B_rule_based,B 規則式多模態,unsafe_action_interception_rate,0.9794871794871794,0.9578947368421052,0.9953057127813612,2000
+C_fixed_threshold,C 固定信心門檻,correct_retrieval_rate,0.21666666666666667,0.175,0.25833333333333336,2000
+C_fixed_threshold,C 固定信心門檻,wrong_box_rate,0.002777777777777778,0.0,0.008333333333333333,2000
+C_fixed_threshold,C 固定信心門檻,error_rate_among_executed,0.012658227848101266,0.0,0.041666666666666664,2000
+C_fixed_threshold,C 固定信心門檻,human_confirmation_rate,0.20833333333333334,0.16666666666666666,0.25,2000
+C_fixed_threshold,C 固定信心門檻,unsafe_action_interception_rate,0.9948717948717949,0.9838709677419355,1.0,2000
+D_calibrated_risk,D 校正風險感知（本研究）,correct_retrieval_rate,0.18888888888888888,0.14993055555555557,0.22777777777777777,2000
+D_calibrated_risk,D 校正風險感知（本研究）,wrong_box_rate,0.0,0.0,0.0,2000
+D_calibrated_risk,D 校正風險感知（本研究）,error_rate_among_executed,0.0,0.0,0.0,2000
+D_calibrated_risk,D 校正風險感知（本研究）,human_confirmation_rate,0.2361111111111111,0.19166666666666668,0.2833333333333333,2000
+D_calibrated_risk,D 校正風險感知（本研究）,unsafe_action_interception_rate,1.0,1.0,1.0,2000
+D_no_calibration,D − 風險校正,correct_retrieval_rate,0.17222222222222222,0.13333333333333333,0.2111111111111111,2000
+D_no_calibration,D − 風險校正,wrong_box_rate,0.0,0.0,0.0,2000
+D_no_calibration,D − 風險校正,error_rate_among_executed,0.0,0.0,0.0,2000
+D_no_calibration,D − 風險校正,human_confirmation_rate,0.19166666666666668,0.15,0.23333333333333334,2000
+D_no_calibration,D − 風險校正,unsafe_action_interception_rate,1.0,1.0,1.0,2000
+D_no_speech_conf,D − 語音信心,correct_retrieval_rate,0.06111111111111111,0.03888888888888889,0.08611111111111111,2000
+D_no_speech_conf,D − 語音信心,wrong_box_rate,0.0,0.0,0.0,2000
+D_no_speech_conf,D − 語音信心,error_rate_among_executed,0.0,0.0,0.0,2000
+D_no_speech_conf,D − 語音信心,human_confirmation_rate,0.36666666666666664,0.3138888888888889,0.4166666666666667,2000
+D_no_speech_conf,D − 語音信心,unsafe_action_interception_rate,1.0,1.0,1.0,2000
+D_no_vision_conf,D − 視覺信心,correct_retrieval_rate,0.20833333333333334,0.16666666666666666,0.25,2000
+D_no_vision_conf,D − 視覺信心,wrong_box_rate,0.0,0.0,0.0,2000
+D_no_vision_conf,D − 視覺信心,error_rate_among_executed,0.0,0.0,0.0,2000
+D_no_vision_conf,D − 視覺信心,human_confirmation_rate,0.21944444444444444,0.175,0.26666666666666666,2000
+D_no_vision_conf,D − 視覺信心,unsafe_action_interception_rate,1.0,1.0,1.0,2000
+D_no_schedule_feat,D − 排程特徵,correct_retrieval_rate,0.2972222222222222,0.25,0.34444444444444444,2000
+D_no_schedule_feat,D − 排程特徵,wrong_box_rate,0.002777777777777778,0.0,0.008333333333333333,2000
+D_no_schedule_feat,D − 排程特徵,error_rate_among_executed,0.009259259259259259,0.0,0.03,2000
+D_no_schedule_feat,D − 排程特徵,human_confirmation_rate,0.125,0.09166666666666666,0.16111111111111112,2000
+D_no_schedule_feat,D − 排程特徵,unsafe_action_interception_rate,0.9948717948717949,0.983957219251337,1.0,2000
+D_no_period_homophone,D − 時段近音字,correct_retrieval_rate,0.25555555555555554,0.2111111111111111,0.30006944444444406,2000
+D_no_period_homophone,D − 時段近音字,wrong_box_rate,0.0,0.0,0.0,2000
+D_no_period_homophone,D − 時段近音字,error_rate_among_executed,0.0,0.0,0.0,2000
+D_no_period_homophone,D − 時段近音字,human_confirmation_rate,0.16944444444444445,0.13333333333333333,0.20833333333333334,2000
+D_no_period_homophone,D − 時段近音字,unsafe_action_interception_rate,1.0,1.0,1.0,2000
+E_conformal,E Conformal 風險控制,correct_retrieval_rate,0.18888888888888888,0.14993055555555557,0.22777777777777777,2000
+E_conformal,E Conformal 風險控制,wrong_box_rate,0.0,0.0,0.0,2000
+E_conformal,E Conformal 風險控制,error_rate_among_executed,0.0,0.0,0.0,2000
+E_conformal,E Conformal 風險控制,human_confirmation_rate,0.175,0.13333333333333333,0.21666666666666667,2000
+E_conformal,E Conformal 風險控制,unsafe_action_interception_rate,1.0,1.0,1.0,2000

@@ -2,6 +2,13 @@
 
 本檔只記錄實際完成的修改。每筆必須包含修改內容、驗證證據與尚未完成事項，不能把計畫寫成已完成。
 
+## 2026-11-03 第二階段預先登記實驗
+
+- 檔案：`RESEARCH.md` §7、`models/exp1200_v2_D_*`、`models/risk_model.{joblib,json}`、`results/exp1200_v2/`、`results/stress1200/`（後兩者於 2026-11-12 補 commit）。
+- 行為：新增遮擋重複盒規則、時段近音字特徵與 stress 情境分佈（預先登記 commit `745c17b`）；儀表板改用 exp1200_v2 的 D 校正風險模型（執行門檻 0.344）。
+- 驗證：兩次 1,200 情境實際 MuJoCo 物理執行（exp1200_v2 576 次、stress1200 498 次）；H5／H6／H7 不成立，H8 只依登記的 bootstrap 標準成立，不宣稱 ≤2%。
+- 未驗證：擴大樣本後的 H5、真人語音、真實 RGB-D 與 Panda。
+
 ## 2026-11-02 通報失敗會持久重試
 
 - 檔案：`carearm/safety/alerts.py`、`tests/test_alert_retry.py`、`HANDOFF.md`。

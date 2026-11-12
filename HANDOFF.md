@@ -1,6 +1,6 @@
 # HANDOFF：CareArm AI 開發交接
 
-最後更新：2026-11-02
+最後更新：2026-11-12
 
 ## 0. 目前主線與本次交接規則（2026-10-21）
 
@@ -18,7 +18,7 @@
 | Phase 3 語音 | ✅ 文字＋意圖完成；Faster-Whisper 路徑已實作但**未在本機實測** | 意圖 eval（含未見句型與 ASR 雜訊）準確率 96.0%，ECE 0.136→0.019 |
 | Phase 4 整合 | ✅ 完成 | `carearm.demo` 與 API 皆跑通「指令→視覺→排程→決策→夾取→驗證」 |
 | Phase 5 風險決策 | ✅ 完成，但**通過硬性規則後的錯誤樣本極少**（見 §4） | 47 個 pytest 全過 |
-| Phase 6 實驗 | ✅ 300 情境 + 1200 情境擴充 | 見 §4 |
+| Phase 6 實驗 | ✅ 300 情境 + 1200 情境擴充；第二階段 exp1200_v2＋stress1200（預先登記） | 見 §4、`RESEARCH.md` §7 |
 | Phase 7 儀表板 | ✅ 完成 | Playwright 在桌面 1440 px 與手機 390 px 截圖檢查過 |
 | Phase 8 測試／文件 | ✅ | macOS `.venv/bin/mjpython -m pytest -q tests` → 140 passed（2026-11-01） |
 | 開口藥杯＋藥丸 | ✅ | 藥丸隨杯搬運、取走、掉落物理測試通過 |
@@ -167,7 +167,7 @@
 
 ## 5. 已知問題與限制
 
-- 風險模型的錯誤樣本極少（見 §4），係數與門檻的不確定性很大。目前 `models/risk_model.joblib` 來自 exp1200（train 245 件／4 錯；calibration 97 件／3 錯；執行門檻 0.161）。
+- 風險模型的錯誤樣本極少（見 §4），係數與門檻的不確定性很大。目前 `models/risk_model.joblib` 與 `models/exp1200_v2_D_calibrated_risk.joblib` 相同，來自 exp1200_v2（train 233 件、錯誤率 1.7%；calibration 93 件、錯誤率 2.2%；執行門檻 0.344）。舊 exp1200 模型保留於 `models/exp1200_D_*`。
 - 已知盲點：被遮擋的重複藥盒、ASR 把時段詞誤聽成同音字（見 §4.5）。
 - `mjpython -m carearm.api.app --viewer` 的額外原生 3D 視窗仍未驗證；本次驗證的是網頁 renderer。若失敗，使用不加 `--viewer` 的儀表板，或 `carearm.demo --viewer`。
 - Faster-Whisper 第一次使用會下載 small 模型（約 460 MB）；未在 M4 上量測延遲。
@@ -195,12 +195,25 @@ python -m carearm.experiments.runner --run-id main         # 重跑實驗
 1b. 藥丸互相靠在一起時顆數會差 1；可用較高解析度深度或多角度拍攝改善（「是否為空」目前不受影響）。
 2. 針對 §4.5 的兩個盲點：(a) 加入「時段同音字」特徵（例如轉錄中出現「五／找／碗」等近音字但沒有時段詞）；(b) 遮擋面積大時，把「可能有被遮住的物體」納入 Layer 1。
 2b. 另做「壓力」情境分佈（更高 ASR 雜訊、更多遮擋）讓風險模型有足夠錯誤樣本，並比較係數穩定度。
-3. 重跑包含策略 E 的正式 300／1200 情境實驗，才可報告 E vs D。
+3. ~~重跑包含策略 E 的正式實驗~~（2026-11-03 已完成 exp1200_v2／stress1200，見 RESEARCH.md §7）。下一步：以 `--n 3600` 或多個 seed 擴大 stress 實驗提高 H5 檢定力（須先登記）；E 的錯誤率上界改用 Clopper–Pearson。
 4. 依 `docs/voice_script.md` 錄匿名真人語音，再跑 small／medium；目前只有工具與 fake 測試。
 5. 加入手腕旋轉的夾取（依 minAreaRect 角度），擴大 yaw 範圍。
 6. 實驗中模擬照護者確認後的執行，讓「確認」也有結果統計。
 
 ## 8. 變更紀錄
+
+### 2026-11-12：補交接、存第二階段實驗輸出（Claude）
+
+- 分支：`dev`（未合併 main、未 push）。
+- 新增 commit：`results/exp1200_v2/`、`results/stress1200/` 與兩份 log（共約 25 MB，含 sqlite，與既有 `results/exp1200/` 存法一致）。已核對 metrics.csv 中 A–D 自動執行數與 RESEARCH.md §7 表格一致。
+- 本檔更新：最後更新日期、§1 Phase 6、§5 目前使用的風險模型、§7 下一步。
+
+### 2026-11-03：第二階段預先登記實驗（Claude）
+
+- 預先登記 commit `745c17b`（H5–H8、遮擋重複盒規則、時段近音字特徵、stress 情境分佈），之後未改門檻／特徵／分佈；兩次實驗 exp1200_v2、stress1200（各測試 360 情境）。
+- 結果：H5、H6、H7 不成立；H8 依登記的 bootstrap 標準成立，但 Clopper–Pearson 上界 3.27%／5.28% > 2%，不宣稱 E 錯誤率 ≤ 2%。詳見 `RESEARCH.md` §7（含標明為探索性的 H6 分解）。
+- 儀表板改用 exp1200_v2 的 D 模型（commit `d0eee43`）。
+- 未完成：擴大 stress 實驗、真人語音、真實 RGB-D／Panda。
 
 ### 2026-11-01：讓系統可實際使用（Claude、Codex）
 

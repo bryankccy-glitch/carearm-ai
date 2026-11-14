@@ -1,0 +1,33 @@
+{
+  "features": [
+    "intent_conf",
+    "intent_margin",
+    "keyword_agrees",
+    "oov_ratio",
+    "period_homophone",
+    "minutes_from_window",
+    "explicit_period",
+    "n_plausible"
+  ],
+  "coefficients": {
+    "intent_conf": 1.627495512888396,
+    "intent_margin": -2.073785811346069,
+    "keyword_agrees": -1.056646265624621,
+    "oov_ratio": -0.8504720073484513,
+    "period_homophone": 0.283610412058835,
+    "minutes_from_window": 0.8462107574660739,
+    "explicit_period": 0.3173130863093984,
+    "n_plausible": -0.32838499500657387
+  },
+  "platt_slope": 0.09326247401338673,
+  "platt_applied": true,
+  "calibrated": true,
+  "execute_below": 0.03571240873210711,
+  "stop_above": 0.5,
+  "max_auto_error_target": 0.02,
+  "calibration_n": 221,
+  "calibration_positive_rate": 0.03619909502262444,
+  "calibration_coverage": 0.502262443438914,
+  "train_n": 549,
+  "train_positive_rate": 0.03278688524590164
+}

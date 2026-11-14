@@ -1,0 +1,10 @@
+{
+  "run_id": "stress3600",
+  "n_scenarios": 3600,
+  "base_seed": 20261112,
+  "conformal_alpha": 0.02,
+  "scenario_profile": "stress",
+  "physics_executions": 1499,
+  "wall_seconds": 22077.0,
+  "finished_at": "2026-11-14T01:41:30"
+}

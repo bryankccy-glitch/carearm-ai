@@ -2,6 +2,13 @@
 
 本檔只記錄實際完成的修改。每筆必須包含修改內容、驗證證據與尚未完成事項，不能把計畫寫成已完成。
 
+## 2026-11-14 第三階段 stress3600 重複實驗
+
+- 檔案：`RESEARCH.md` §9–10、`results/stress3600/`、`HANDOFF.md`。
+- 行為：程式未改；依預先登記指令執行 3,600 情境壓力實驗（實際物理執行 1,499 次）。
+- 驗證：H9 成立（D vs B，exact McNemar p = 0.031）；H10 不成立（E 錯誤率上界 6.07%）。
+- 未驗證：真人語音、真實 RGB-D 與 Panda；結果僅限模擬。
+
 ## 2026-11-03 第二階段預先登記實驗
 
 - 檔案：`RESEARCH.md` §7、`models/exp1200_v2_D_*`、`models/risk_model.{joblib,json}`、`results/exp1200_v2/`、`results/stress1200/`（後兩者於 2026-11-12 補 commit）。

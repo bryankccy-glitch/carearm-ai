@@ -57,6 +57,7 @@ class PillCounter:
         self.min_area = float(a.get("min_pill_area_mm2", 14))
         self.pill_area = float(a.get("pill_area_mm2", 60))
         self.max_single = float(a.get("max_single_pill_mm2", 135))
+        self.max_capsule = float(a.get("max_capsule_mm2", 200))
         self.min_height = float(a.get("min_pill_height_mm", 2.5)) / 1000.0
 
     @staticmethod
@@ -249,11 +250,16 @@ class PillCounter:
                 solidity = float(stats[i, cv2.CC_STAT_AREA]) / max(hull_area, 1.0)
                 if area_mm2 <= self.max_single and solidity >= 0.86:
                     est = 1                      # 單顆圓錠或膠囊：凸、面積不大
+                elif (height_src is not None and area_mm2 <= self.max_capsule and solidity >= 0.90
+                      and self._count_height_peaks(rel, blob) <= 1):
+                    est = 1                      # 大顆膠囊：面積超過一般上限，但凸且只有一個高度峰
                 else:
                     # 黏在一起：用高度峰（相鄰藥丸之間有凹谷）估計，至少 2 顆；沒有深度時用面積
                     by_area = max(2, int(round(area_mm2 / self.pill_area)))
                     est = max(2, self._count_height_peaks(rel, blob)) if height_src is not None else by_area
-                    reasons.append(f"有藥丸靠在一起（{area_mm2:.0f} mm²），估計 {est} 顆")
+                    # 擠在一起的顆數只是估計：標記不確定，讓上層再看一次或請照護者確認，不要很有把握地回報錯的數字
+                    uncertain = True
+                    reasons.append(f"有藥丸靠在一起（{area_mm2:.0f} mm²），估計 {est} 顆，需再看一次或請照護者確認")
                 if area_mm2 < self.min_area * 1.6:
                     uncertain = True
                     reasons.append(f"有一個很小的斑點（{area_mm2:.0f} mm²），無法確定是不是藥丸碎片")

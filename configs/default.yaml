@@ -120,6 +120,7 @@ adherence:
   min_pill_area_mm2: 14              # 小於此面積的斑點視為雜訊
   pill_area_mm2: 60                  # 估計黏在一起的藥丸數時，每顆的平均俯視面積
   max_single_pill_mm2: 135           # 凸且小於此面積的斑點算一顆（圓錠約 30–55，膠囊約 80–120）
+  max_capsule_mm2: 200               # 凸、只有一個高度峰時，此面積內仍算一顆大膠囊（模擬最大膠囊約 180 mm²）
   depth_noise_mm: 0.8                # 手腕深度相機雜訊（短距離 RGB-D 約 0.5–1 mm）
   min_pill_height_mm: 2.5            # 高出內底此高度才算藥丸（藥丸 6–9 mm 高）
   repeat_claim_alert: 2              # 同一盒「說吃完但盒內仍有藥」達此次數就回報總部

@@ -15,7 +15,7 @@ from matplotlib import font_manager  # noqa: E402
 
 from carearm.settings import MODELS_DIR  # noqa: E402
 from carearm.speech.intent import INTENTS, expected_calibration_error  # noqa: E402
-from carearm.experiments.stats import MAIN_METRICS, bootstrap_ci, mcnemar_exact  # noqa: E402
+from carearm.experiments.stats import CAREGIVER_METRICS, MAIN_METRICS, bootstrap_ci, mcnemar_exact  # noqa: E402
 
 STRATEGY_ZH = {
     "A_vision_only": "A 純視覺",
@@ -306,6 +306,45 @@ def build_report(run_dir: Path) -> dict:
         "intent_accuracy_test": float((test_d.true_intent == test_d.pred_intent).mean()),
         "n_failures_main": int(len(failures)),
     }
+    if "caregiver_requested" in df:
+        caregiver_rows = []
+        for strategy, group in df.groupby("strategy", sort=False):
+            executed = group.caregiver_executed.fillna(False).astype(bool)
+            correct = group.caregiver_correct.fillna(False).astype(bool)
+            approved = group.caregiver_approved.fillna(False).astype(bool)
+            caregiver_rows.append({
+                "strategy": strategy, "n_test": len(group),
+                "confirmation_requests": int(group.caregiver_requested.sum()),
+                "approved": int(approved.sum()),
+                "rejected": int((group.caregiver_requested & ~approved).sum()),
+                "approved_unexecuted": int((approved & ~executed).sum()),
+                "confirmed_executions": int(executed.sum()),
+                "confirmed_correct": int((executed & correct).sum()),
+                "confirmed_execution_errors": int((executed & ~correct).sum()),
+                "caregiver_decision_errors": int(group.caregiver_decision_error.sum()),
+                **{name: fn(group) for name, fn in CAREGIVER_METRICS.items()},
+            })
+        caregiver_metrics = pd.DataFrame(caregiver_rows)
+        caregiver_metrics.to_csv(run_dir / "caregiver_metrics.csv", index=False, encoding="utf-8-sig")
+        summary["caregiver_metrics"] = json.loads(caregiver_metrics.to_json(orient="records", force_ascii=False))
+        metadata_path = run_dir / "run_meta.json"
+        metadata = json.loads(metadata_path.read_text()) if metadata_path.exists() else {}
+        label = metadata.get("result_label", "探索性照護者模擬結果，非預先登記正式實驗")
+        summary["caregiver_settings"] = metadata.get("caregiver", {})
+        summary["result_label"] = label
+        lines = [f"# {label}", "", "照護者僅依情境真值批准或拒絕；錯誤率為翻轉決定的機率，不保證物理成功。",
+                 "批准沿用原提案；缺目標或有硬性停止限制時不執行，另列未執行數。STOP 不送審。",
+                 "正確完成率與執行錯誤率的分母為確認後實際執行數；無執行時以未定義表示。",
+                 "負擔為每 100 個測試情境的審查次數（批准及拒絕皆計）；端到端率分母為全部測試情境。",
+                 "既有 metrics.csv 仍只統計自動執行。數字僅代表模擬，不代表真人照護者或真實給藥。", "",
+                 "| 策略 | 審查次數 | 批准未執行 | 確認後正確／執行 | 執行錯誤 | 每百次負擔 | 端到端正確率 |",
+                 "|---|---:|---:|---:|---:|---:|---:|"]
+        for row in caregiver_rows:
+            lines.append(f"| {STRATEGY_ZH.get(row['strategy'], row['strategy'])} | {row['confirmation_requests']} | "
+                         f"{row['approved_unexecuted']} | {row['confirmed_correct']}/{row['confirmed_executions']} | "
+                         f"{row['confirmed_execution_errors']} | {row['caregiver_burden_per_100']:.2f} | "
+                         f"{row['end_to_end_retrieval_rate']:.2%} |")
+        (run_dir / "caregiver_report.md").write_text("\n".join(lines), encoding="utf-8")
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
     return summary
 

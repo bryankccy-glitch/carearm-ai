@@ -236,28 +236,16 @@ def build() -> None:
     subtitle.paragraph_format.space_after = Pt(12)
     style_run(subtitle.add_run("Uncertainty Aware Robotic Medication Retrieval with Human Review for Elderly Care"), size=11)
 
-    add_table(
-        doc,
-        ["欄位", "內容"],
-        [
-            ["申請人", "程陳宥"],
-            ["就讀學校及系所", "淡江大學 資訊管理學系"],
-            ["年級", "二年級"],
-            ["指導教授", "徐煥志 教授"],
-            ["擬申請年度", "116 年度"],
-            ["研究期間", "116 年 7 月 1 日至 117 年 2 月 29 日，共 8 個月"],
-        ],
-        widths=[4.2, 11.7],
-        font_size=11,
-    )
+    # 申請人、學校、指導教授等資料屬於表 C801（scripts/build_c801_c803.js），不放在 C802
+    add_heading(doc, "二、研究計畫內容：", 1)
 
-    add_heading(doc, "一 摘要", 1)
+    add_heading(doc, "（一）摘要", 1)
     add_text(doc, "本研究擬建置一套面向長照情境的多模態取藥機械手臂系統，使 Franka Panda 機械手臂能依據使用者語音、藥盒視覺資訊與服藥排程，自動判斷應取藥盒並完成夾取、搬運與放置。研究核心並非追求單一分類器的最高準確率，而是探討當語音辨識、影像偵測或排程資訊存在不確定性時，如何以硬性安全規則、校正後風險估計及人工覆核形成可解釋的兩層安全決策。系統另以手腕 RGB-D 相機觀察藥杯，判斷藥丸是否仍在杯內、是否部分取走或疑似掉落，但不宣稱能證明真人已吞服。")
     add_text(doc, "研究將在 MuJoCo 中建立 Panda、開口藥杯、獨立藥丸、俯視相機及手腕相機，並比較純視覺、規則式多模態、固定信心門檻、校正風險與 conformal 風險控制等策略。主要評估指標包含正確自動完成率、錯盒率、自動執行中的錯誤率、人工確認率、危險動作攔截率、語音字錯誤率、視覺定位誤差及藥杯空杯判讀正確率。前期 1,200 情境模擬顯示，兩層安全策略可將錯盒率由純視覺的 27.5% 降至 0.3%，並維持 39.2% 的自動完成率。其後預先登記的 3,600 情境壓力實驗中，校正風險策略的自動執行錯誤顯著少於純規則策略（exact McNemar p = 0.031），代價是自動完成率由 29.0% 降至 16.8%；conformal 策略則未達 2% 錯誤率目標。真實語音與實體 RGB-D 相機尚未驗證，本計畫將以匿名真人語音、多次隨機種子及真實相機試驗補強證據，並以 bootstrap 信賴區間與 McNemar 配對檢定呈現結果。")
     add_text(doc, "關鍵詞：長照機器人、多模態感知、不確定性校正、人工覆核、Conformal Risk Control、RGB-D 服藥驗證", indent=False, after=0)
 
     new_page(doc)
-    add_heading(doc, "二 研究動機與研究問題", 1)
+    add_heading(doc, "（二）研究動機與研究問題", 1)
     add_heading(doc, "2.1 研究背景與重要性", 2)
     add_text(doc, "世界衛生組織將用藥相關傷害列為全球病人安全的重要議題，並指出問題不只來自個人操作，也涉及藥品、照護人員與整體系統流程[1]。長者可能同時面臨多重用藥、記憶負荷、視聽能力下降及照護人力不足，因此自動提醒或配送藥物具有實際需求。然而，機械手臂若在聽錯時段、看錯藥盒或無法判斷重複取藥時仍執行，錯誤會直接轉化為物理動作；只展示一次成功夾取，不能證明系統在不確定情況下安全。")
     add_text(doc, "近年的藥物管理機器人研究指出，此類系統可能提升依從性、降低照護負擔，但仍須處理技術故障、隱私、人機接受度與長期有效性等問題[2]。因此，本研究不把機器人定位為臨床決策者，而是研究一個可追蹤、可拒絕執行、可交由人員覆核的取藥流程。藥物種類、劑量與處方皆由外部既定資料提供；系統只處理指定藥杯的辨識、搬運及狀態紀錄。")
@@ -294,7 +282,7 @@ def build() -> None:
     add_text(doc, "本研究所稱「已取完」僅表示視覺上未再看到預期藥丸；介面中的「已服用」是流程狀態，不構成醫療證明。系統發現部分取走、疑似掉落、深度資料不足或語音歧義時，應停止或要求人工確認，而不是自行猜測。")
 
     new_page(doc)
-    add_heading(doc, "三 文獻回顧與探討", 1)
+    add_heading(doc, "（三）文獻回顧與探討", 1)
     add_heading(doc, "3.1 長照用藥安全與機器人輔助", 2)
     add_text(doc, "WHO 的 Medication Without Harm 架構將病人、專業人員、藥品以及系統流程共同視為降低用藥傷害的關鍵[1]。這個觀點提醒我們，取藥機器人的問題不只是夾取精度，而是整個資訊鏈是否能在錯誤傳入物理動作前攔截。Maleki 等人針對居家與長照藥物管理機器人的系統性回顧顯示，既有研究雖呈現依從性與照護協調的潛力，但納入研究數仍少，且存在技術、隱私與使用者接受度限制[2]。因此，本計畫把錯誤拒絕、人工覆核與可追溯紀錄納入主要研究指標。")
     add_heading(doc, "3.2 語音理解與多模態意圖", 2)
@@ -316,7 +304,7 @@ def build() -> None:
     add_caption(doc, "圖 1 前期 MuJoCo 俯視相機與藥盒辨識結果")
 
     new_page(doc)
-    add_heading(doc, "四 研究方法及步驟", 1)
+    add_heading(doc, "（四）研究方法及步驟", 1)
     add_heading(doc, "4.1 系統架構", 2)
     add_text(doc, "系統以「語音與排程理解、俯視視覺定位、兩層安全決策、Panda 物理執行、手腕 RGB-D 驗證、事件與人工覆核」六個模組串接。所有 MuJoCo 與 OpenGL 操作由單一 worker 執行緒管理；網頁 API 只送出工作並讀取狀態，避免跨執行緒渲染。")
     add_table(
@@ -399,7 +387,7 @@ def build() -> None:
     add_text(doc, "模擬資料只保存情境 seed、設定檔、決策輸出與物理執行結果，不含個人資料。真人語音只收錄 25 句固定指令並使用匿名 speaker_id，音檔與 manifest 分開管理，不記錄姓名、病史、地址或真實用藥；受試者可隨時退出並要求刪除未匿名化資料，正式收錄前依校規確認倫理審查程序。本研究不使用真實藥物、不提供治療建議；實機階段先以空杯及模型藥丸進行，採低速、限制工作空間、實體緊急停止並由指導人員在場。")
 
     # Continue on the same page so the C802 main body stays within 10 pages.
-    add_heading(doc, "五 預期結果", 1)
+    add_heading(doc, "（五）預期結果", 1)
     add_heading(doc, "5.1 預期學術成果", 2)
     add_numbered(doc, 1, "提出可重現的長照取藥多模態安全評估框架，分離感知、規則、風險、人工覆核與物理驗證。")
     add_numbered(doc, 2, "量化校正風險、固定門檻與 conformal 策略在自動完成率、錯誤率與人工負擔間的取捨。")
@@ -428,7 +416,7 @@ def build() -> None:
     add_text(doc, "若錯誤樣本不足，以多個 seed 重複壓力情境，而不重複抽樣偽造資訊；若真人語音收案不足，結論限定為工具可用性測試；若 RGB-D 無法分開接觸的藥丸，主要終點改為「是否為空」並以多視角補強；若實機時間不足，完成相機離線與模擬硬體在迴路測試，並明確保留實機限制。")
 
     # Keep this section in the 10-page main body; references start on a new page.
-    add_heading(doc, "六 需要指導教授指導內容", 1)
+    add_heading(doc, "（六）需要指導教授指導內容", 1)
     add_text(doc, "本計畫由學生負責程式整合、情境產生、實驗執行、資料整理與初稿撰寫；以下工作需要指導教授提供方法與安全審查。")
     add_numbered(doc, 1, "研究問題與因果界線：確認研究主張是否超過模擬與觀察資料能支持的範圍。")
     add_numbered(doc, 2, "實驗設計：審查 train/calibration/test 分離、壓力情境分佈、樣本數與多 seed 重複方式。")
@@ -442,7 +430,7 @@ def build() -> None:
     add_text(doc, "前期系統已完成模擬夾取、藥盒辨識、語音與排程決策、RGB-D 計數與儀表板，預先登記的 3,600 情境壓力實驗也在模擬中支持風險模型的安全效益。後續聚焦策略 E 的錯誤率控制、匿名真人語音與真實 RGB-D 相機；實機延遲時仍能完成模擬與離線研究。")
 
     new_page(doc)
-    add_heading(doc, "七 參考文獻", 1)
+    add_heading(doc, "（七）參考文獻", 1)
     refs = [
         "[1] World Health Organization. (2017). Medication Without Harm: WHO Global Patient Safety Challenge. https://www.who.int/initiatives/medication-without-harm/",
         "[2] Maleki, M., Mardani, A., Kakemam, E., Huertas-Zurriaga, A., & Vaismoradi, M. (2025). Robot-assisted medication management in home care and long-term care settings: A mixed-method systematic review. Expert Review of Pharmacoeconomics & Outcomes Research, 25(8), 1167-1182. https://doi.org/10.1080/14737167.2025.2537190",

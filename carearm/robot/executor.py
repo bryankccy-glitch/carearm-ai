@@ -16,6 +16,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from typing import Callable
 
+import mujoco
 import numpy as np
 
 from carearm.settings import PERIODS, ensure_legacy_on_path
@@ -86,13 +87,35 @@ class ExecutionControl:
 
 
 class _Controller(PandaPickPlaceController):
-    """只新增步數計數；move_to / hold 完全使用上層實作。"""
+    """沿用位置閉迴路，另以 mocap 姿態目標驅動既有 opspace 控制。"""
 
     steps = 0
 
     def _step(self, xyz_action, gripper):
         self.steps += 1
         return super()._step(xyz_action, gripper)
+
+    def rotate_yaw(self, yaw_deg: float, gripper: float) -> None:
+        """以世界 Z 軸旋轉預設朝下姿態；每次最多改變 3°，不直接改關節。"""
+        sim = self.env.unwrapped
+        body = int(np.flatnonzero(sim.model.body_mocapid == 0)[0])
+        base = sim.model.body_quat[body]
+        target = np.empty(4)
+        half = np.deg2rad(yaw_deg) / 2
+        mujoco.mju_mulQuat(target, np.array([np.cos(half), 0, 0, np.sin(half)]), base)
+        start = sim.data.mocap_quat[0].copy()
+        if np.dot(start, target) < 0:
+            target = -target
+        angle = 2 * np.arccos(np.clip(np.dot(start, target), -1, 1))
+        for t in np.linspace(0, 1, max(2, int(np.ceil(angle / np.deg2rad(3))) + 1)):
+            quat = (1 - t) * start + t * target
+            sim.data.mocap_quat[0] = quat / np.linalg.norm(quat)
+            self.hold(gripper, 2)
+        sim.data.mocap_quat[0] = target
+        self.hold(gripper, self.config.settle_steps)
+        actual = sim.data.sensor("2f85/pinch_quat").data
+        if abs(np.dot(actual, target)) < np.cos(np.deg2rad(5) / 2):
+            raise PickPlaceError("手腕旋轉未到達目標姿態（容許誤差 5°）")
 
 
 class RetrievalExecutor:
@@ -137,9 +160,12 @@ class RetrievalExecutor:
     def move_to_observation_pose(self) -> None:
         """把手臂移出俯視相機視野，之後才拍照做視覺辨識。"""
 
-        ctrl = self._controller(f"{PERIODS[0]}_box_pos")
+        self._observe(self._controller(f"{PERIODS[0]}_box_pos"))
+
+    def _observe(self, ctrl: _Controller) -> None:
         tcp = ctrl.tcp_position
         ctrl.move_to((tcp[0], tcp[1], 0.30), GRIPPER_OPEN)
+        ctrl.rotate_yaw(0.0, GRIPPER_OPEN)
         ctrl.move_to(OBSERVE_POSITION, GRIPPER_OPEN)
 
     def move_wrist_camera_over(self, xy: tuple[float, float], offset: tuple[float, float] = (0.0, 0.0)) -> None:
@@ -185,6 +211,7 @@ class RetrievalExecutor:
         *,
         place_area: str = "delivery",
         place_xy: tuple[float, float] | None = None,
+        yaw_deg: float | None = None,
     ) -> ExecutionResult:
         """依視覺估計的 XY 夾取，放到遞送區（取藥）或回收區（吃完藥後收空盒）。
 
@@ -215,10 +242,23 @@ class RetrievalExecutor:
             self.status_cb(name)
 
         try:
+            align = self.cfg.get("grasp", {}).get("align_yaw", True)
+            if align and yaw_deg is None:
+                # 現有呼叫端只傳 XY：在觀測姿態重新拍照，依最近的標籤取得角度。
+                from carearm.perception.detector import LabelDetector
+
+                stage("觀測標籤角度")
+                self._observe(ctrl)
+                detections = LabelDetector(self.cfg).detect_all(self.sim.render_overhead(), self.sim.camera_geometry())
+                nearby = [d for d in detections if np.linalg.norm(np.asarray(d.world_xy) - (x, y)) < 0.025]
+                yaw_deg = min(nearby, key=lambda d: np.linalg.norm(np.asarray(d.world_xy) - (x, y))).yaw_deg if nearby else 0.0
             stage("張開夾爪")
             ctrl.hold(GRIPPER_OPEN, ctrl.config.open_steps)
             stage("移動到藥盒上方")
             ctrl.move_to((x, y, ctrl.config.travel_height), GRIPPER_OPEN)
+            if align:
+                stage("依標籤角度旋轉手腕")
+                ctrl.rotate_yaw((float(yaw_deg) + 45.0) % 90.0 - 45.0, GRIPPER_OPEN)
             ctrl.move_to((x, y, ctrl.config.approach_height), GRIPPER_OPEN)
             stage("下降到夾取位置")
             ctrl.move_to((x, y, grasp_z), GRIPPER_OPEN)
@@ -241,6 +281,9 @@ class RetrievalExecutor:
                 ctrl.move_to(SAFE_HOME, GRIPPER_OPEN)
                 return self._finish(result, before, started, ctrl)
 
+            if align:
+                # 在抬升後回正，避免旋轉的藥盒在遞送／回收格位碰到鄰盒。
+                ctrl.rotate_yaw(0.0, GRIPPER_HOLD)
             stage(f"移動到{area_zh}上方")
             ctrl.move_to((delivery[0], delivery[1], ctrl.config.travel_height), GRIPPER_HOLD)
             stage("下降並放下")

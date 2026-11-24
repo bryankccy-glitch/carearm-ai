@@ -41,6 +41,7 @@ class LabelDetection:
     raw_scores: dict[str, float] = field(default_factory=dict)      # 未校正（色相距離 softmax）
     calibrated_probs: dict[str, float] = field(default_factory=dict)  # 校正後機率
     predicted_period: str | None = None
+    yaw_deg: float = 0.0                      # 世界 Z 軸角度，90° 等價角中最接近 0 者
     zone: str = "table"                         # table / delivery / collection
 
     def features(self) -> np.ndarray:
@@ -161,7 +162,12 @@ class LabelDetector:
             label_pixels = (region > 0) & (mask > 0)
             if label_pixels.sum() < MIN_AREA_PX * 0.8:
                 continue
-            (cx, cy), (rw, rh), _ = cv2.minAreaRect(hull)
+            rect = cv2.minAreaRect(hull)
+            (cx, cy), (rw, rh), _ = rect
+            # 先將矩形邊投影到世界平面；不能直接把影像角度取負，因為相機可能傾斜。
+            corners = np.asarray([projector.to_world(*uv) for uv in cv2.boxPoints(rect)])
+            edge = corners[1] - corners[0]
+            yaw_deg = (float(np.degrees(np.arctan2(edge[1], edge[0]))) + 45.0) % 90.0 - 45.0
             rect_area = max(rw * rh, 1.0)
             hull_area = cv2.contourArea(hull)
             hues = hue[label_pixels].astype(float) * 2.0
@@ -195,6 +201,7 @@ class LabelDetector:
                 mean_val=mean_val,
                 dot_count=dots,
                 zone=zone,
+                yaw_deg=yaw_deg,
             )
             det.raw_scores = self.raw_color_scores(det)
             if self.calibrator is not None:

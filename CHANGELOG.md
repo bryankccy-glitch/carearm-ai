@@ -2,6 +2,68 @@
 
 本檔只記錄實際完成的修改。每筆必須包含修改內容、驗證證據與尚未完成事項，不能把計畫寫成已完成。
 
+## 2026-11-24 Claude 審查更正（優先於下方 Codex 紀錄）
+
+- **相鄰藥丸分水嶺計數已撤回**：`pills.py` 退回原版、刪除 `tests/test_pills_touching.py`。原因：新演算法在真實 MuJoCo wrist 深度影像上過度分割（`test_adherence.py` evening 3 顆算成 5、noon 2 顆算成 3），只在合成影像測試通過。「靠在一起差 1 顆」仍為已知限制。
+- 保留手腕 yaw 對齊（`detector.py`、`executor.py`、`grasp.align_yaw`）。注意：固定腕姿在 ±40° 也成功，目前沒有證據顯示對齊提升成功率。
+- Claude 在沙盒外以 `.venv/bin/mjpython -m pytest -q tests` 實跑：**189 passed**。渲染 yaw 偵測誤差仍未量測。
+
+## 2026-11-24 手腕旋轉夾取（Codex 原始紀錄；藥丸部分已撤回）
+
+- 修改檔案：`carearm/perception/detector.py`、`carearm/perception/pills.py`、`carearm/robot/executor.py`、`configs/default.yaml`（只新增 `grasp.align_yaw: true`）；新增 `tests/test_grasp_yaw.py`、`tests/test_pills_touching.py`；本條紀錄。
+- 行為：`LabelDetection.yaw_deg` 將最小外接矩形的邊投影到世界平面，再取 `[-45°, 45°)` 的 90° 等價角。執行器在高處以既有 opspace 控制漸進旋轉腕姿，抬升後回正再搬運。既有只傳 XY 的呼叫端會先到觀測姿態重新偵測；也可明確傳入 `yaw_deg`。不改物理成功判定或既有情境分佈。
+- 行為：深度分割後，以距離轉換顯著峰值作種子，於前景內分水嶺分開接觸藥丸，依各分區面積排除雜訊；無法拆分的大型或非凸區塊標記不確定，交由再次拍攝。保留無深度時一律不確定的規則，未新增套件。
+
+實際驗證（Python 皆使用主專案 `.venv`，設定 `PYTHONPATH=/Users/chengchenyou/Desktop/ml`）：
+
+- 真正 MuJoCo 物理測試只替換 OpenGL renderer 初始化，不替換模型、接觸、控制器、時間積分或成功判定；明確輸入測試角度，不能當成視覺端到端驗證。各角度各執行一次，結果如下：
+
+  | yaw | 對齊後夾取並送達 | 抬升 mm | 放置誤差 mm |
+  |---|---|---|---|
+  | -40° | 成功 | 136.6 | 0.1 |
+  | -25° | 成功 | 136.7 | 0.2 |
+  | 0° | 成功 | 136.5 | 0.2 |
+  | 25° | 成功 | 136.5 | 0.2 |
+  | 40° | 成功 | 136.6 | 0.4 |
+
+- `align_yaw=false` 比較：-40° 與 +40° 均夾取並送達成功（各一次）；未為了製造基線失敗修改判定，這組結果不能宣稱對齊提升成功率。
+- 相鄰計數：2／3／4 顆接觸圓錠遮罩皆正確、單顆膠囊未被多切。解析射線—球面 RGB-D 的同格相切場景（2 顆成列、3 顆 L 形、4 顆方形），在 0 與 0.8 mm 深度雜訊、1% 無效像素下皆正確；這是合成幾何影像，並非 MuJoCo 渲染。另有 10 個投影合成標籤測試（5 角度 × 2 相機傾角）通過，不能代替真實渲染誤差量測。
+- 指令與實際輸出：
+
+  ```text
+  PYTHONPATH=/Users/chengchenyou/Desktop/ml /Users/chengchenyou/Desktop/ml/carearm-ai/.venv/bin/python -m pytest -q -s tests/test_grasp_yaw.py tests/test_pills_touching.py -k 'not rendered and not wrist'
+  27 passed, 8 deselected, 2 warnings in 18.65s
+  ```
+
+- 依要求最後執行完整 mjpython 指令；stdout／stderr 為空（0 bytes），外層 shell 取得退出碼 134，尚未進入 pytest。連 `mjpython -c 'print("mjpython ready")'` 亦為 134：
+
+  ```text
+  PYTHONPATH=/Users/chengchenyou/Desktop/ml /Users/chengchenyou/Desktop/ml/carearm-ai/.venv/bin/mjpython -m pytest -q tests
+  （沒有輸出；exit_code=134）
+  ```
+
+- 另以一般 Python 診斷完整測試，實際輸出摘要如下。2 個失敗與 51 個錯誤均為 renderer／服務初始化的 `invalid CoreGraphics connection`；不是完整測試全過：
+
+  ```text
+  PYTHONPATH=/Users/chengchenyou/Desktop/ml /Users/chengchenyou/Desktop/ml/carearm-ai/.venv/bin/python -m pytest -q tests
+  2 failed, 149 passed, 6 warnings, 51 errors in 23.57s
+  ```
+
+- `py_compile`（三個修改模組、兩個新增測試）與 `git diff --check` 通過。未修改 `results/`、`models/`、`RESEARCH.md`、實驗程式、`settings.py`、既有測試、HANDOFF 或 CODEX_TASKS（依本次明確檔案限制）。
+
+未完成／未驗證：
+
+- 本次實際 MuJoCo 渲染影像數為 **0**；yaw 偵測的渲染影像 MAE／P95 **未量測**，不能提供 240 張的誤差數字。5 個真實渲染＋自動角度夾取整合測試與 3 個接觸藥丸 wrist RGB-D 測試已新增，但環境無法初始化，尚未通過。
+- 既有 `test_pills.py`、`test_adherence*.py` 的物理／相機部分亦受 CGL 阻擋，不能宣稱全過。需在可正常啟動 mjpython／CGL 的環境重新執行完整指令並完成渲染誤差量測；本次屬部分完成。
+- 未驗證真實 Panda、真實 RGB-D 相機或真人服藥；未重跑已發表大型實驗。
+- **尚未建立 commit**：已實際嘗試明確列檔的 `git add` 與 `git commit -m "feat: 新增手腕角度對齊與相鄰藥丸分水嶺計數"`，兩者皆退出 128：
+
+  ```text
+  fatal: Unable to create '/Users/chengchenyou/Desktop/ml/carearm-ai/.git/worktrees/codex-grasp/index.lock': Operation not permitted
+  ```
+
+  worktree 的 Git metadata 位於目前可寫範圍以外；本環境不允許提權。修改保留在分支 `codex/grasp-yaw-pills` 的工作目錄，未暫存、未 commit、未 push、未 merge。需具備該 Git 目錄寫入權限後再提交上述七個檔案。
+
 ## 2026-11-14 第三階段 stress3600 重複實驗
 
 - 檔案：`RESEARCH.md` §9–10、`results/stress3600/`、`HANDOFF.md`。

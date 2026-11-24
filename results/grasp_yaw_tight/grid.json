@@ -1,0 +1,542 @@
+[
+ {
+  "gap_mm": 56,
+  "yaw": 0.0,
+  "align": true,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 1.0
+ },
+ {
+  "gap_mm": 56,
+  "yaw": 0.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.8
+ },
+ {
+  "gap_mm": 56,
+  "yaw": 15.0,
+  "align": true,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 1.0
+ },
+ {
+  "gap_mm": 56,
+  "yaw": 15.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.8
+ },
+ {
+  "gap_mm": 56,
+  "yaw": 30.0,
+  "align": true,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 1.1
+ },
+ {
+  "gap_mm": 56,
+  "yaw": 30.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.8
+ },
+ {
+  "gap_mm": 56,
+  "yaw": 40.0,
+  "align": true,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 1.1
+ },
+ {
+  "gap_mm": 56,
+  "yaw": 40.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.8
+ },
+ {
+  "gap_mm": 56,
+  "yaw": 45.0,
+  "align": true,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 1.1
+ },
+ {
+  "gap_mm": 56,
+  "yaw": 45.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.9
+ },
+ {
+  "gap_mm": 60,
+  "yaw": 0.0,
+  "align": true,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.9
+ },
+ {
+  "gap_mm": 60,
+  "yaw": 0.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.8
+ },
+ {
+  "gap_mm": 60,
+  "yaw": 15.0,
+  "align": true,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 1.0
+ },
+ {
+  "gap_mm": 60,
+  "yaw": 15.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.8
+ },
+ {
+  "gap_mm": 60,
+  "yaw": 30.0,
+  "align": true,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 1.1
+ },
+ {
+  "gap_mm": 60,
+  "yaw": 30.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.8
+ },
+ {
+  "gap_mm": 60,
+  "yaw": 40.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.3
+ },
+ {
+  "gap_mm": 60,
+  "yaw": 40.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.8
+ },
+ {
+  "gap_mm": 60,
+  "yaw": 45.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.3
+ },
+ {
+  "gap_mm": 60,
+  "yaw": 45.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.9
+ },
+ {
+  "gap_mm": 65,
+  "yaw": 0.0,
+  "align": true,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.9
+ },
+ {
+  "gap_mm": 65,
+  "yaw": 0.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.8
+ },
+ {
+  "gap_mm": 65,
+  "yaw": 15.0,
+  "align": true,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 1.0
+ },
+ {
+  "gap_mm": 65,
+  "yaw": 15.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.8
+ },
+ {
+  "gap_mm": 65,
+  "yaw": 30.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.2
+ },
+ {
+  "gap_mm": 65,
+  "yaw": 30.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.8
+ },
+ {
+  "gap_mm": 65,
+  "yaw": 40.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.3
+ },
+ {
+  "gap_mm": 65,
+  "yaw": 40.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.8
+ },
+ {
+  "gap_mm": 65,
+  "yaw": 45.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.4
+ },
+ {
+  "gap_mm": 65,
+  "yaw": 45.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.8
+ },
+ {
+  "gap_mm": 70,
+  "yaw": 0.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.9
+ },
+ {
+  "gap_mm": 70,
+  "yaw": 0.0,
+  "align": false,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.7
+ },
+ {
+  "gap_mm": 70,
+  "yaw": 15.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.1
+ },
+ {
+  "gap_mm": 70,
+  "yaw": 15.0,
+  "align": false,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.7
+ },
+ {
+  "gap_mm": 70,
+  "yaw": 30.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.2
+ },
+ {
+  "gap_mm": 70,
+  "yaw": 30.0,
+  "align": false,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.6
+ },
+ {
+  "gap_mm": 70,
+  "yaw": 40.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.3
+ },
+ {
+  "gap_mm": 70,
+  "yaw": 40.0,
+  "align": false,
+  "success": false,
+  "grasp": false,
+  "error": "夾取驗證失敗：沒有任何藥盒被抬高 8 cm",
+  "sec": 0.9
+ },
+ {
+  "gap_mm": 70,
+  "yaw": 45.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.3
+ },
+ {
+  "gap_mm": 70,
+  "yaw": 45.0,
+  "align": false,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.6
+ },
+ {
+  "gap_mm": 80,
+  "yaw": 0.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 612.0
+ },
+ {
+  "gap_mm": 80,
+  "yaw": 0.0,
+  "align": false,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.5
+ },
+ {
+  "gap_mm": 80,
+  "yaw": 15.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.1
+ },
+ {
+  "gap_mm": 80,
+  "yaw": 15.0,
+  "align": false,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.7
+ },
+ {
+  "gap_mm": 80,
+  "yaw": 30.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.3
+ },
+ {
+  "gap_mm": 80,
+  "yaw": 30.0,
+  "align": false,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.7
+ },
+ {
+  "gap_mm": 80,
+  "yaw": 40.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.5
+ },
+ {
+  "gap_mm": 80,
+  "yaw": 40.0,
+  "align": false,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.7
+ },
+ {
+  "gap_mm": 80,
+  "yaw": 45.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.6
+ },
+ {
+  "gap_mm": 80,
+  "yaw": 45.0,
+  "align": false,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.5
+ },
+ {
+  "gap_mm": 100,
+  "yaw": 0.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.8
+ },
+ {
+  "gap_mm": 100,
+  "yaw": 0.0,
+  "align": false,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.6
+ },
+ {
+  "gap_mm": 100,
+  "yaw": 15.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.2
+ },
+ {
+  "gap_mm": 100,
+  "yaw": 15.0,
+  "align": false,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.6
+ },
+ {
+  "gap_mm": 100,
+  "yaw": 30.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.1
+ },
+ {
+  "gap_mm": 100,
+  "yaw": 30.0,
+  "align": false,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.7
+ },
+ {
+  "gap_mm": 100,
+  "yaw": 40.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.4
+ },
+ {
+  "gap_mm": 100,
+  "yaw": 40.0,
+  "align": false,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.6
+ },
+ {
+  "gap_mm": 100,
+  "yaw": 45.0,
+  "align": true,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 2.4
+ },
+ {
+  "gap_mm": 100,
+  "yaw": 45.0,
+  "align": false,
+  "success": true,
+  "grasp": true,
+  "error": null,
+  "sec": 1.5
+ }
+]

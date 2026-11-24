@@ -124,3 +124,33 @@ def mcnemar_exact(df: pd.DataFrame, a: str, b: str) -> dict[str, int | float | s
         "p_value": p_value,
         "n_paired": int(len(paired)),
     }
+
+
+def confirmed_completion_rate(g: pd.DataFrame) -> float:
+    """確認後正確完成 ÷ 確認後實際執行；無執行時未定義。"""
+    executed = _bool(g["caregiver_executed"])
+    return float(_bool(g.loc[executed, "caregiver_correct"]).mean()) if executed.any() else float("nan")
+
+
+def confirmed_error_rate(g: pd.DataFrame) -> float:
+    rate = confirmed_completion_rate(g)
+    return 1 - rate
+
+
+def caregiver_burden_per_100(g: pd.DataFrame) -> float:
+    """每 100 次取藥請求（全部測試情境）所需的人工審查次數，含拒絕。"""
+    return 100 * float(_bool(g["caregiver_requested"]).mean())
+
+
+def end_to_end_retrieval_rate(g: pd.DataFrame) -> float:
+    automatic = _bool(g["executed"]) & _bool(g["correct"])
+    confirmed = _bool(g["caregiver_executed"]) & _bool(g["caregiver_correct"])
+    return float((automatic | confirmed).mean())
+
+
+CAREGIVER_METRICS: dict[str, MetricFn] = {
+    "confirmed_completion_rate": confirmed_completion_rate,
+    "confirmed_error_rate": confirmed_error_rate,
+    "caregiver_burden_per_100": caregiver_burden_per_100,
+    "end_to_end_retrieval_rate": end_to_end_retrieval_rate,
+}

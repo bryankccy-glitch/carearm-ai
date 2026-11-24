@@ -2,6 +2,22 @@
 
 本檔只記錄實際完成的修改。每筆必須包含修改內容、驗證證據與尚未完成事項，不能把計畫寫成已完成。
 
+
+## 2026-11-24 Claude 審查（照護者確認模擬）
+
+- Claude 在沙盒外以 `.venv/bin/mjpython -m pytest -q tests` 實跑：**185 passed**（含停用時輸出不變的回歸測試）。60 情境試跑尚未執行；正式實驗需先在 RESEARCH.md 預先登記。
+
+## 2026-11-24 照護者確認後執行的可選實驗統計
+
+- 檔案：修改 `carearm/experiments/runner.py`、`report.py`、`stats.py`；新增 `carearm/experiments/caregiver.py`、`tests/test_caregiver.py`、`tests/fixtures/caregiver_legacy_*`、`docs/caregiver_simulation.md`；新增 `results/caregiver_smoke/` 的失敗試跑紀錄。本條依本次任務明確要求更新；未修改 CODEX_TASKS、README、HANDOFF 或 RESEARCH。
+- 行為：`--caregiver-error 0/0.05` 啟用依真值批准／拒絕的模擬照護者，錯誤率為翻轉機率；`--caregiver-seed` 固定情境層級抽樣。批准沿用原決策時段及座標，經原 execute 共用物理快取；STOP 不送審，缺目標及硬性停止規則不以真值覆蓋，另列批准未執行數。
+- 統計：新增確認後正確完成率、執行錯誤數／率、每百次請求審查負擔與端到端正確取藥率，寫入獨立 caregiver_metrics.csv／caregiver_report.md 及 summary。原 executed／correct 及原統計仍只算自動執行；未啟用時不新增欄位或輸出。啟用時訓練產物保存在本次 run，避免覆寫既有模型；沒有修改訓練演算法、門檻、決策或情境分佈。
+- 實際驗證：同一虛擬環境 `python -m pytest -q tests/test_caregiver.py tests/test_stats.py tests/test_decision.py tests/test_conformal.py` → `45 passed, 2 warnings`。新增測試涵蓋錯誤率邊界、固定種子、批准／拒絕、錯盒及不應取藥、缺目標、硬性停止、分母、報告 CSV 讀回與 execute 快取共用。原版提交 a1296d5 生成的固定合成樣本用於停用功能回歸：決策列與 summary 一致，metrics／stats／pairwise CSV 位元組一致；圖檔未做跨平台位元組比較。
+- 完整測試實際輸出：`PYTHONPATH=~/Desktop/ml .../.venv/bin/mjpython -m pytest -q tests` → exit 134、無輸出；同環境改用 Python → `2 failed, 140 passed, 5 warnings, 43 errors in 6.26s`，失敗／錯誤均涉及 MuJoCo renderer／服務啟動的 `invalid CoreGraphics connection`。未宣稱完整驗收通過。
+- 小型試跑：已嘗試 `--run-id caregiver_smoke --n 60 --seed 20261124 --caregiver-error 0.05 --smoke`；mjpython exit 134，Python 在初始化 renderer 時 exit 1（同上 CGL 錯誤）。`results/caregiver_smoke/caregiver_report.md` 明列「小樣本試跑，非正式結果」及未完成狀態；沒有物理結果與指標，沒有捏造數字。既有 results 未改。
+- 提交限制：目前分支 `codex/caregiver-confirm`；`git add` 回報無法建立主 repo 的 `.git/worktrees/codex-confirm/index.lock`（`Operation not permitted`），該 metadata 位於本工作目錄可寫範圍外，故尚未 commit，沒有 push 或 merge。
+- 未驗證：成功的 60 情境 MuJoCo 試跑、指定 mjpython 全部測試通過、真實照護者／語音／相機／Panda。正式實驗前應先在 RESEARCH.md 登記固定樣本與 seed、照護者能力及缺目標處理、錯誤率比較、四指標分母、配對分析／區間及多重比較規則；具體建議與重跑指令見 `docs/caregiver_simulation.md`。本次未自行登記或執行正式大型實驗。
+
 ## 2026-11-14 第三階段 stress3600 重複實驗
 
 - 檔案：`RESEARCH.md` §9–10、`results/stress3600/`、`HANDOFF.md`。

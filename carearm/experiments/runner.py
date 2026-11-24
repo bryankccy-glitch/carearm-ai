@@ -36,6 +36,7 @@ from carearm.decision.engine import (
     VisionOnly,
     build_features,
 )
+from carearm.experiments.caregiver import SimulatedCaregiver
 from carearm.experiments.scenarios import Scenario, generate_suite
 from carearm.perception.calibration import load_detector
 from carearm.pipeline import interpret, observation_from_dict, observation_to_dict, perceive
@@ -66,9 +67,14 @@ class ExperimentRunner:
         cfg: dict | None = None,
         alpha: float = 0.02,
         profile: str | None = None,
+        caregiver_error: float | None = None,
+        caregiver_seed: int = 20261124,
+        smoke: bool = False,
     ) -> None:
         if not 0 < alpha < 1:
             raise ValueError("alpha 必須介於 0 與 1 之間")
+        self.caregiver = None if caregiver_error is None else SimulatedCaregiver(caregiver_error, caregiver_seed)
+        self.smoke = smoke
         self.cfg = cfg or load_config()
         if profile is not None:
             self.cfg["experiments"]["profile"] = profile
@@ -196,8 +202,12 @@ class ExperimentRunner:
                                   default_stop_above=dcfg["risk_stop_above"])
             model.info.update({"train_n": len(tr_y), "train_positive_rate": float(np.mean(tr_y))})
             models[name] = model
-            model.save(f"{self.run_id}_{name}" if name != "D_calibrated_risk" else "risk_model")
-            model.save(f"{self.run_id}_{name}")
+            if self.caregiver is None:
+                model.save(f"{self.run_id}_{name}" if name != "D_calibrated_risk" else "risk_model")
+                model.save(f"{self.run_id}_{name}")
+            else:
+                # 試跑模型留在本次輸出，不覆寫儀表板或既有研究模型。
+                model.save(str((self.dir / name).resolve()))
 
         # 策略 E：模型只用 train 擬合；門檻只看 calibration 的 raw risk 與物理 loss。
         conformal_model = RiskModel(ALL_FEATURES, calibrate=False)
@@ -292,6 +302,8 @@ class ExperimentRunner:
                 else:
                     row.update({"executed": False, "exec_success": None, "grasp_success": None, "delivered_box": None,
                                 "failure_stage": None, "robot_sim_seconds": 0.0, "correct": None})
+                if self.caregiver is not None:
+                    row.update(self.caregiver.evaluate(sc, dec, self.execute, self.correct))
                 row["reasons"] = " / ".join(dec.reasons)
                 self.store.add_decision(self.run_id, sc.scenario_id, dec, {"executed": row["executed"], "correct": row["correct"]})
                 rows.append(row)
@@ -313,12 +325,18 @@ class ExperimentRunner:
         out = self.dir / "test_decisions.csv"
         df.to_csv(out, index=False, encoding="utf-8-sig")
         pd.DataFrame([s.to_dict() for s in self.scenarios]).to_csv(self.dir / "scenarios.csv", index=False, encoding="utf-8-sig")
-        (self.dir / "run_meta.json").write_text(json.dumps({
+        metadata = {
             "run_id": self.run_id, "n_scenarios": self.n, "base_seed": self.base_seed,
             "conformal_alpha": self.alpha, "scenario_profile": self.profile,
             "physics_executions": len(self.exec_cache), "wall_seconds": round(time.time() - t0, 1),
             "finished_at": datetime.now().isoformat(timespec="seconds"),
-        }, indent=2), encoding="utf-8")
+        }
+        if self.caregiver is not None:
+            metadata["caregiver"] = {"error_rate": self.caregiver.error_rate, "seed": self.caregiver.seed,
+                                     "sampling": "sha256(seed:scenario_id)", "target": "原決策提案"}
+        if self.smoke:
+            metadata["result_label"] = "小樣本試跑，非正式結果"
+        (self.dir / "run_meta.json").write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
         _log(f"完成：{out}（實際物理執行 {len(self.exec_cache)} 次）")
         self.env.close()
         return out
@@ -331,8 +349,12 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--alpha", type=float, default=0.02, help="策略 E 的 conformal 風險上限（預設 0.02）")
     parser.add_argument("--profile", default=None, help="情境分佈：default（第一階段）或 stress（第二階段壓力情境）")
+    parser.add_argument("--caregiver-error", type=float, default=None, help="啟用模擬照護者及其錯誤率（例如 0 或 0.05）；省略則維持原實驗")
+    parser.add_argument("--caregiver-seed", type=int, default=20261124, help="照護者固定種子（與情境亂數獨立）")
+    parser.add_argument("--smoke", action="store_true", help="標示為小樣本試跑，非正式結果")
     args = parser.parse_args()
-    out = ExperimentRunner(args.run_id, args.n, args.seed, alpha=args.alpha, profile=args.profile).run()
+    out = ExperimentRunner(args.run_id, args.n, args.seed, alpha=args.alpha, profile=args.profile,
+                           caregiver_error=args.caregiver_error, caregiver_seed=args.caregiver_seed, smoke=args.smoke).run()
     from carearm.experiments.report import build_report
 
     build_report(out.parent)

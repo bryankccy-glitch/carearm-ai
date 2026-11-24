@@ -123,3 +123,7 @@ adherence:
   depth_noise_mm: 0.8                # 手腕深度相機雜訊（短距離 RGB-D 約 0.5–1 mm）
   min_pill_height_mm: 2.5            # 高出內底此高度才算藥丸（藥丸 6–9 mm 高）
   repeat_claim_alert: 2              # 同一盒「說吃完但盒內仍有藥」達此次數就回報總部
+
+# 依視覺標籤角度旋轉手腕；false 可重現固定腕姿的比較基線
+grasp:
+  align_yaw: true

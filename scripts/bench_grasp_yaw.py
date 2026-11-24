@@ -3,7 +3,8 @@
 目標盒（noon）放在 (0.50, 0.0)，左右（夾爪開合方向）各放一個鄰盒，改變中心距與目標盒角度，
 比較 align_yaw=true／false 的 MuJoCo 物理結果。成功判定沿用 executor（含鄰盒位移 ≤ 1.5 cm）。
 只停用 OpenGL renderer；接觸、控制器、時間積分都是真正的 MuJoCo。
-用法：.venv/bin/mjpython scripts/bench_grasp_yaw.py [--out results.json]
+用法：caffeinate -i .venv/bin/mjpython scripts/bench_grasp_yaw.py [--out results.json]
+（長時間執行請用 caffeinate 防止電腦睡眠；sec 是實際經過時間，cpu_sec 不含睡眠）
 """
 from __future__ import annotations
 
@@ -44,13 +45,13 @@ def main():
                 env.reset(seed=0, options={"conditions": SceneConditions(positions=pos)})
                 ex = RetrievalExecutor(env, c)
                 ex.move_to_observation_pose()
-                t = time.time()
+                t = time.time(); c0 = time.process_time()
                 try:
                     r = ex.execute("noon", (0.50, 0.0), yaw_deg=yaw).to_dict()
                 except Exception as e:  # 工作範圍外等例外如實記錄
                     r = {"success": False, "error": f"{type(e).__name__}: {e}"}
                 row = {"gap_mm": round(gap * 1000), "yaw": yaw, "align": align, "success": bool(r.get("success")),
-                       "grasp": r.get("grasp_success"), "error": r.get("error"), "sec": round(time.time() - t, 1)}
+                       "grasp": r.get("grasp_success"), "error": r.get("error"), "sec": round(time.time() - t, 1), "cpu_sec": round(time.process_time() - c0, 1)}
                 rows.append(row)
                 print(json.dumps(row, ensure_ascii=False), flush=True)
     env.close()
